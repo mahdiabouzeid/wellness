@@ -1,0 +1,76 @@
+body{
+  background-color: white;
+}
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100%;
+  background-color: #fafafa;
+  overflow: hidden;
+  gap: 60px; /* 👈 adds space between the image and login box */
+}
+
+/* Left section (image area) */
+.left-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff;
+  padding: 20px;
+  max-width: 50%; /* prevent it from stretching too far */
+}
+
+.left-image {
+  width: 100%;
+  max-width: 450px; /* control the image size */
+  height: auto;
+  object-fit: contain;
+}
+
+/* Right section (login form) */
+.right-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #f9f9ff;
+  padding: 40px;
+  max-width: 450px;
+  border-radius: 20px;
+  box-shadow: 0px 4px 25px rgba(0, 0, 0, 0.08);
+  margin-right: 80px; /* gives breathing room */
+}
+
+.login-form {
+  width: 100%;
+  margin-top: 20px;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 900px) {
+  .login-container {
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 20px;
+  }
+
+  .left-section {
+    max-width: 100%;
+    padding: 10px;
+  }
+
+  .left-image {
+    max-width: 300px;
+    margin-bottom: 30px;
+  }
+
+  .right-section {
+    margin-right: 0;
+    width: 100%;
+    max-width: 400px;
+  }
+}
