@@ -1,0 +1,46 @@
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #4caf50; /* light green */
+    color: white;
+    padding: 16px 48px 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    min-width: 280px;
+    z-index: 9999;
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  .notification-text {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+  
+  .close-btn {
+    position: absolute !important;
+    top: 4px;
+    right: 4px;
+    color: white;
+  }
+  
+  .progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background-color: white;
+    transition: width 0.1s linear;
+  }
+  
+  /* 🧍‍♂️ Mobile view - show at top center */
+  @media (max-width: 768px) {
+    .notification {
+      right: 50%;
+      transform: translateX(50%);
+      top: 10px;
+      width: 90%;
+    }
+  }
+  

@@ -19,6 +19,7 @@ import StatCard from "../components/layout/StatCard";
 import WellnessBarChart from "../components/charts/WellnessBarChart";
 import WellnessCircularChart from "../components/charts/WellnessCircularChart";
 import RecommendationCard from "../components/ui/RecommendationCard";
+import Notification from "../components/ui/notifications"
 
 const AdminDashboard = () => {
   const [stats] = useState({
@@ -43,8 +44,10 @@ const AdminDashboard = () => {
   };
 
   return (
+    
     <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#F5F6FA" }}>
       {/* Sidebar for desktop */}
+      <Notification />
       <Box
         component="nav"
         sx={{
