@@ -12,6 +12,7 @@ import Recommendations from "../pages/Recommendations";
 import Notifications from "../pages/Notifications";
 import ProfileSettings from "../pages/ProfileSettings";
 import SchoolActivitiesPage from "../pages/SchoolActivitiesPage";
+import ActivityUploading from "../pages/ActivityUpload";
 export default function AppRouter() {
   return (
     <Router>
@@ -27,7 +28,6 @@ export default function AppRouter() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<ProfileSettings />} />
         <Route path="/school-activity-page" element={ <SchoolActivitiesPage />} />
-
 
         {/* Fallback for any unknown route */}
         <Route path="*" element={<Navigate to="/" />} />

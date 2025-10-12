@@ -9,6 +9,7 @@ import {
   Typography,
   Slider,
   LinearProgress,
+  Grid,
 } from "@mui/material";
 
 export default function ActivityUpload() {
@@ -18,19 +19,25 @@ export default function ActivityUpload() {
     dimension_id: "",
     suggested_grade: 0,
     weight_percentage: 0,
+    school_id: "",
     file: null,
   });
   const [dimensions, setDimensions] = useState([]);
+  const [schools, setSchools] = useState([]);
   const [message, setMessage] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
 
-  // Fetch dimensions from backend
   useEffect(() => {
     fetch("http://localhost/wellness-backend/get_dimensions.php")
       .then((res) => res.json())
       .then(setDimensions)
-      .catch((e) => console.log(e));
+      .catch(console.error);
+
+    fetch("http://localhost/wellness-backend/get_schools.php")
+      .then((res) => res.json())
+      .then(setSchools)
+      .catch(console.error);
   }, []);
 
   const handleChange = (e) => {
@@ -45,26 +52,22 @@ export default function ActivityUpload() {
     setFormData((prev) => ({ ...prev, [name]: newValue }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setUploading(true);
     setUploadProgress(0);
     setMessage("");
 
     const data = new FormData();
-    Object.entries(formData).forEach(([key, value]) =>
-      data.append(key, value)
-    );
-    data.append("created_by", 1); // Example admin ID
+    Object.entries(formData).forEach(([key, value]) => data.append(key, value));
+    data.append("created_by", 1);
 
-    // Use XMLHttpRequest to track progress
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "http://localhost/wellness-backend/upload_activity.php", true);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        setUploadProgress(percent);
+        setUploadProgress(Math.round((event.loaded / event.total) * 100));
       }
     };
 
@@ -87,15 +90,21 @@ export default function ActivityUpload() {
   };
 
   return (
-    <Box maxWidth={600} mx="auto" mt={4}>
-      <Card>
+    <Box maxWidth={700} mx="auto" p={2}>
+      <Card sx={{ borderRadius: 3 }}>
         <CardContent>
-          <Typography variant="h5" mb={2} fontWeight={600}>
+          <Typography variant="h5" fontWeight={700} color="primary" mb={1}>
             Upload Monthly Activity
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Fill in all fields before submitting.
           </Typography>
 
           <form onSubmit={handleSubmit} encType="multipart/form-data">
-            {/* Activity Title */}
+            <Typography color="primary" fontWeight={600} mb={1}>
+              Basic Information
+            </Typography>
+
             <TextField
               fullWidth
               label="Activity Title"
@@ -106,7 +115,6 @@ export default function ActivityUpload() {
               required
             />
 
-            {/* Description */}
             <TextField
               fullWidth
               multiline
@@ -118,57 +126,60 @@ export default function ActivityUpload() {
               margin="normal"
             />
 
-            {/* Dimension Dropdown */}
-            <TextField
-              select
-              fullWidth
-              label="Dimension"
-              name="dimension_id"
-              value={formData.dimension_id}
-              onChange={handleChange}
-              margin="normal"
-              required
-            >
-              {dimensions.map((d) => (
-                <MenuItem key={d.id} value={d.id}>
-                  {d.name}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            {/* Suggested Grade / Stage Slider */}
-            <Typography mt={3} fontWeight={500}>
-              Suggested Grade / Stage
+            <Typography color="primary" fontWeight={600} mt={3}>
+              Details
             </Typography>
-            <TextField
-  type="number"
-  fullWidth
-  label="Suggested Grade / Stage"
-  name="suggested_grade"
-  value={formData.suggested_grade}
-  onChange={handleChange}
-  inputProps={{ min: 0, max: 12 }}
-  margin="normal"
-  sx={{
-    "& .MuiInputBase-input": {
-      color: "primary.main", // text color
-    },
-    "& .MuiOutlinedInput-root": {
-      "& fieldset": {
-        borderColor: "primary.main", // default border
-      },
-      "&:hover fieldset": {
-        borderColor: "primary.dark", // hover border
-      },
-      "&.Mui-focused fieldset": {
-        borderColor: "primary.main", // focused border
-      },
-    },
-  }}
-/>
 
+            <Grid container spacing={2} mt={1}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Dimension"
+                  name="dimension_id"
+                  value={formData.dimension_id}
+                  onChange={handleChange}
+                  required
+                >
+                  {dimensions.map((d) => (
+                    <MenuItem key={d.id} value={d.id}>
+                      {d.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
 
-            {/* Weight / Contribution Slider */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  select
+                  fullWidth
+                  label="School"
+                  name="school_id"
+                  value={formData.school_id}
+                  onChange={handleChange}
+                  required
+                >
+                  {schools.map((s) => (
+                    <MenuItem key={s.id} value={s.id}>
+                      {s.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  type="number"
+                  fullWidth
+                  label="Suggested Grade"
+                  name="suggested_grade"
+                  value={formData.suggested_grade}
+                  onChange={handleChange}
+                  inputProps={{ min: 0, max: 12 }}
+                />
+              </Grid>
+            </Grid>
+
             <Typography mt={3} fontWeight={500}>
               Weight / Contribution (%)
             </Typography>
@@ -180,30 +191,20 @@ export default function ActivityUpload() {
               min={0}
               max={100}
               valueLabelDisplay="auto"
-              sx={{
-                color:"primary.main"
-              }
-              }
+              sx={{ color: "primary.main" }}
             />
-            <Box display="flex" justifyContent="space-between" px={1}>
-              <Typography variant="caption">Low Impact</Typography>
-              <Typography variant="caption">High Impact</Typography>
-            </Box>
 
-            {/* File Upload */}
             <Button variant="outlined" component="label" sx={{ mt: 3 }}>
               Upload File / Image
               <input type="file" hidden name="file" onChange={handleChange} />
             </Button>
 
-            {/* Show selected file name */}
             {formData.file && (
               <Typography mt={1} variant="body2" color="text.secondary">
                 ✅ File selected: {formData.file.name}
               </Typography>
             )}
 
-            {/* Progress Bar */}
             {uploading && (
               <Box mt={2}>
                 <LinearProgress variant="determinate" value={uploadProgress} />
@@ -213,7 +214,6 @@ export default function ActivityUpload() {
               </Box>
             )}
 
-            {/* Submit Button */}
             <Button
               type="submit"
               variant="contained"
@@ -224,14 +224,13 @@ export default function ActivityUpload() {
             >
               Submit Activity
             </Button>
-          </form>
 
-          {/* Response Message */}
-          {message && (
-            <Typography mt={2} color="secondary">
-              {message}
-            </Typography>
-          )}
+            {message && (
+              <Typography mt={2} color="secondary">
+                {message}
+              </Typography>
+            )}
+          </form>
         </CardContent>
       </Card>
     </Box>

@@ -10,6 +10,7 @@ const menuItems = [
   { text: "Upload Activities", icon: <Upload size={18} />, path: "/activity-upload" },
   { text: "Notifications", icon: <Bell size={18} />, path: "/notifications" },
   { text: "Settings", icon: <Settings size={18} />, path: "/settings" },
+  
 ];
 
 const Sidebar = () => {
