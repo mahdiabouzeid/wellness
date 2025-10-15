@@ -16,10 +16,10 @@ export default function ActivityUpload() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    dimension_id: "",
+    dimension_id: [],
     suggested_grade: 0,
     weight_percentage: 0,
-    school_id: "",
+    school_id: [],
     file: null,
   });
   const [dimensions, setDimensions] = useState([]);
@@ -41,10 +41,17 @@ export default function ActivityUpload() {
   }, []);
 
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
+    const { name, value, files, multiple } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: files ? files[0] : value,
+      [name]: multiple ? Array.from(value) : files ? files[0] : value,
+    }));
+  };
+
+  const handleMultiSelectChange = (name, selectedValues) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: selectedValues,
     }));
   };
 
@@ -59,7 +66,13 @@ export default function ActivityUpload() {
     setMessage("");
 
     const data = new FormData();
-    Object.entries(formData).forEach(([key, value]) => data.append(key, value));
+    Object.entries(formData).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach((v) => data.append(`${key}[]`, v));
+      } else {
+        data.append(key, value);
+      }
+    });
     data.append("created_by", 1);
 
     const xhr = new XMLHttpRequest();
@@ -135,17 +148,41 @@ export default function ActivityUpload() {
                 <TextField
                   select
                   fullWidth
+                  SelectProps={{
+                    multiple: true,
+                    value: formData.dimension_id,
+                    onChange: (e) =>
+                      handleMultiSelectChange("dimension_id", e.target.value),
+                  }}
                   label="Dimension"
                   name="dimension_id"
-                  value={formData.dimension_id}
-                  onChange={handleChange}
                   required
+                  size="medium"
+                  helperText="Select one or more wellness dimensions"
+                  sx={{
+                    "& .MuiInputBase-root": { height: 60, fontSize: "1rem" },
+                  }}
                 >
-                  {dimensions.map((d) => (
-                    <MenuItem key={d.id} value={d.id}>
-                      {d.name}
-                    </MenuItem>
-                  ))}
+                 {dimensions.map((d) => (
+  <MenuItem
+    key={d.id}
+    value={d.id}
+    sx={{
+      backgroundColor: formData.dimension_id.includes(d.id)
+        ? "#4F46E5" // same as Submit Activity button color
+        : "inherit",
+      color: formData.dimension_id.includes(d.id) ? "white" : "inherit",
+      "&:hover": {
+        backgroundColor: formData.dimension_id.includes(d.id)
+          ? "#4338CA" // darker shade on hover
+          : "rgba(79,70,229,0.1)",
+      },
+    }}
+  >
+    {d.name}
+  </MenuItem>
+))}
+
                 </TextField>
               </Grid>
 
@@ -153,17 +190,41 @@ export default function ActivityUpload() {
                 <TextField
                   select
                   fullWidth
+                  SelectProps={{
+                    multiple: true,
+                    value: formData.school_id,
+                    onChange: (e) =>
+                      handleMultiSelectChange("school_id", e.target.value),
+                  }}
                   label="School"
                   name="school_id"
-                  value={formData.school_id}
-                  onChange={handleChange}
                   required
+                  size="medium"
+                  helperText="Select one or more Schools to send this activity to"
+                  sx={{
+                    "& .MuiInputBase-root": { height: 60, fontSize: "1rem" },
+                  }}
                 >
-                  {schools.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
+               {schools.map((s) => (
+  <MenuItem
+    key={s.id}
+    value={s.id}
+    sx={{
+      backgroundColor: formData.school_id.includes(s.id)
+        ? "#4F46E5"
+        : "inherit",
+      color: formData.school_id.includes(s.id) ? "white" : "inherit",
+      "&:hover": {
+        backgroundColor: formData.school_id.includes(s.id)
+          ? "#4338CA"
+          : "rgba(79,70,229,0.1)",
+      },
+    }}
+  >
+    {s.name}
+  </MenuItem>
+))}
+
                 </TextField>
               </Grid>
 
@@ -176,6 +237,11 @@ export default function ActivityUpload() {
                   value={formData.suggested_grade}
                   onChange={handleChange}
                   inputProps={{ min: 0, max: 12 }}
+                  size="medium"
+                  helperText="Select which Grade"
+                  sx={{
+                    "& .MuiInputBase-root": { height: 60, fontSize: "1rem" },
+                  }}
                 />
               </Grid>
             </Grid>
@@ -186,7 +252,7 @@ export default function ActivityUpload() {
             <Slider
               value={formData.weight_percentage}
               onChange={(e, v) => handleSliderChange("weight_percentage", v)}
-              step={10}
+              step={5}
               marks
               min={0}
               max={100}

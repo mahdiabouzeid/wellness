@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   PieChart,
   Pie,
@@ -7,41 +7,97 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { Box, Typography, CircularProgress } from "@mui/material";
 
-const data = [
-  { name: "Emotional", value: 70 },
-  { name: "Physical", value: 85 },
-  { name: "Social", value: 60 },
-  { name: "Intellectual", value: 90 },
-  { name: "Spiritual", value: 50 },
-  { name: "Financial", value: 65 },
-  { name: "Environmental", value: 80 },
-  { name: "Vocational", value: 75 },
-];
+const WellnessCircularChart = ({ schoolId, month }) => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-const COLORS = [
-  "#4F46E5", "#22C55E", "#F59E0B", "#3B82F6",
-  "#EC4899", "#10B981", "#8B5CF6", "#EF4444"
-];
+  useEffect(() => {
+    if (!schoolId || !month) return;
 
-const WellnessCircularChart = () => (
-  <ResponsiveContainer width="100%" height={350}>
-    <PieChart>
-      <Pie
-        data={data}
-        dataKey="value"
-        nameKey="name"
-        outerRadius={50}
-        label
-      >
-        {data.map((entry, index) => (
-          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-        ))}
-      </Pie>
-      <Tooltip />
-      <Legend />
-    </PieChart>
-  </ResponsiveContainer>
-);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // ✅ Ensure month format is YYYY-MM (e.g. 2025-10)
+        const formattedMonth = month.slice(0, 7);
+
+        const url = `http://localhost/wellness-backend/get_wellness_percentage.php?school_id=${schoolId}&month=${formattedMonth}`;
+        console.log("Fetching:", url);
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log("API result:", result);
+
+        // ✅ Handle if PHP returns array or object
+        const dataArray = Array.isArray(result)
+          ? result
+          : result?.data || [];
+
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+          const formattedData = dataArray.map((item) => ({
+            name: item.dimension_name,
+            value: parseFloat(item.wellness_percentage) || 0,
+            color: item.color || "#8884d8",
+          }));
+          setData(formattedData);
+        } else {
+          console.warn("No data found in response");
+          setData([]);
+        }
+      } catch (error) {
+        console.error("Error fetching chart data:", error);
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [schoolId, month]);
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height={350}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!data.length) {
+    return (
+      <Box textAlign="center" py={4}>
+        <Typography variant="body2" color="text.secondary">
+          No data available for this month.
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={350}>
+      <PieChart>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          outerRadius={100}
+          label
+        >
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={entry.color} />
+          ))}
+        </Pie>
+        <Tooltip formatter={(value) => `${value}%`} />
+        <Legend />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+};
 
 export default WellnessCircularChart;

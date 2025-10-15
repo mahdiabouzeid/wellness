@@ -229,7 +229,7 @@ const AdminDashboard = () => {
               >
                 Wellness Balance
               </Typography>
-              <WellnessCircularChart />
+              <WellnessCircularChart schoolId={1} month={"2025-10-01"}/>
             </Paper>
           </Grid>
         </Grid>

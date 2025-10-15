@@ -13,6 +13,10 @@ import Notifications from "../pages/Notifications";
 import ProfileSettings from "../pages/ProfileSettings";
 import SchoolActivitiesPage from "../pages/SchoolActivitiesPage";
 import ActivityUploading from "../pages/ActivityUpload";
+import DimensionsManager from "../pages/DimensionManager";
+import SchoolActivity from "../pages/SchoolActivity";
+import UploadEvidence from "../pages/UploadEvidence";
+import AdminDisplayActivities from "../pages/AdminDisplayActivities";
 export default function AppRouter() {
   return (
     <Router>
@@ -28,7 +32,10 @@ export default function AppRouter() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<ProfileSettings />} />
         <Route path="/school-activity-page" element={ <SchoolActivitiesPage />} />
-
+        <Route path="/dimension-manager"element={<DimensionsManager/>}/>
+        <Route path="/school-activity"element={<SchoolActivity/>}/>
+        <Route path="/evidence-upload" element={<UploadEvidence/>}/>
+        <Route path="/display-activities"element={<AdminDisplayActivities/>}/>
         {/* Fallback for any unknown route */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

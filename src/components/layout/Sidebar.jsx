@@ -1,16 +1,16 @@
 import React from "react";
 import { Box, Typography, List, ListItem, ListItemButton, ListItemText } from "@mui/material";
-import { Home, BarChart, CheckLine,Upload, Bell, Settings } from "lucide-react";
+import { Home, BarChart, CheckLine,Upload, Bell, Settings,Pen } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const menuItems = [
   { text: "Home", icon: <Home size={18} />, path: "/admin-dashboard" },
   { text: "Reports", icon: <BarChart size={18} />, path: "/reports" },
-  {text: "Activities", icon: <CheckLine size={18} />, path: "/school-activity-page"},
+  {text: "Activities", icon: <CheckLine size={18} />, path: "/display-activities"},
   { text: "Upload Activities", icon: <Upload size={18} />, path: "/activity-upload" },
   { text: "Notifications", icon: <Bell size={18} />, path: "/notifications" },
   { text: "Settings", icon: <Settings size={18} />, path: "/settings" },
-  
+  {text:"Dimension Manager", icon: <Pen size={18} />, path: "/dimension-manager"},
 ];
 
 const Sidebar = () => {
