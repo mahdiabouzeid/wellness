@@ -22,7 +22,7 @@ const Sidebar = () => {
         width: 220,
         backgroundColor: "#4F46E5",
         color: "#fff",
-        minHeight: "100vh",
+        minHeight: "100%",
         p: 2,
       }}
     >

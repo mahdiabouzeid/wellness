@@ -17,6 +17,7 @@ import DimensionsManager from "../pages/DimensionManager";
 import SchoolActivity from "../pages/SchoolActivity";
 import UploadEvidence from "../pages/UploadEvidence";
 import AdminDisplayActivities from "../pages/AdminDisplayActivities";
+
 export default function AppRouter() {
   return (
     <Router>
@@ -36,6 +37,7 @@ export default function AppRouter() {
         <Route path="/school-activity"element={<SchoolActivity/>}/>
         <Route path="/evidence-upload" element={<UploadEvidence/>}/>
         <Route path="/display-activities"element={<AdminDisplayActivities/>}/>
+       
         {/* Fallback for any unknown route */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

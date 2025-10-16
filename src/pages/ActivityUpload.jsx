@@ -20,14 +20,17 @@ export default function ActivityUpload() {
     suggested_grade: 0,
     weight_percentage: 0,
     school_id: [],
+    month: "",
     file: null,
   });
+
   const [dimensions, setDimensions] = useState([]);
   const [schools, setSchools] = useState([]);
   const [message, setMessage] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
 
+  // ✅ Fetch dropdown data
   useEffect(() => {
     fetch("http://localhost/wellness-backend/get_dimensions.php")
       .then((res) => res.json())
@@ -41,10 +44,10 @@ export default function ActivityUpload() {
   }, []);
 
   const handleChange = (e) => {
-    const { name, value, files, multiple } = e.target;
+    const { name, value, files } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: multiple ? Array.from(value) : files ? files[0] : value,
+      [name]: files ? files[0] : value,
     }));
   };
 
@@ -104,20 +107,14 @@ export default function ActivityUpload() {
 
   return (
     <Box maxWidth={700} mx="auto" p={2}>
-      <Card sx={{ borderRadius: 3 }}>
+      <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
         <CardContent>
           <Typography variant="h5" fontWeight={700} color="primary" mb={1}>
             Upload Monthly Activity
           </Typography>
-          <Typography variant="body2" color="text.secondary" mb={3}>
-            Fill in all fields before submitting.
-          </Typography>
 
           <form onSubmit={handleSubmit} encType="multipart/form-data">
-            <Typography color="primary" fontWeight={600} mb={1}>
-              Basic Information
-            </Typography>
-
+            {/* Title */}
             <TextField
               fullWidth
               label="Activity Title"
@@ -128,6 +125,7 @@ export default function ActivityUpload() {
               required
             />
 
+            {/* Description */}
             <TextField
               fullWidth
               multiline
@@ -139,11 +137,42 @@ export default function ActivityUpload() {
               margin="normal"
             />
 
-            <Typography color="primary" fontWeight={600} mt={3}>
-              Details
-            </Typography>
-
+            {/* Grade + Month + Dimensions + Schools */}
             <Grid container spacing={2} mt={1}>
+              {/* ✅ Grade Selector */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  select
+                  fullWidth
+                  required
+                  label="Suggested Grade"
+                  name="suggested_grade"
+                  value={formData.suggested_grade}
+                  onChange={handleChange}
+                >
+                  {[...Array(13).keys()].map((grade) => (
+                    <MenuItem key={grade} value={grade}>
+                      {grade === 0 ? "Kindergarten" : `Grade ${grade}`}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+
+              {/* ✅ Month Selector */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  required
+                  type="month"
+                  label="Select Month"
+                  name="month"
+                  value={formData.month}
+                  onChange={handleChange}
+                  helperText="Choose the month this activity applies to"
+                />
+              </Grid>
+
+              {/* ✅ Dimension Selector */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   select
@@ -155,37 +184,17 @@ export default function ActivityUpload() {
                       handleMultiSelectChange("dimension_id", e.target.value),
                   }}
                   label="Dimension"
-                  name="dimension_id"
                   required
-                  size="medium"
-                  helperText="Select one or more wellness dimensions"
-                  sx={{
-                    "& .MuiInputBase-root": { height: 60, fontSize: "1rem" },
-                  }}
                 >
-                 {dimensions.map((d) => (
-  <MenuItem
-    key={d.id}
-    value={d.id}
-    sx={{
-      backgroundColor: formData.dimension_id.includes(d.id)
-        ? "#4F46E5" // same as Submit Activity button color
-        : "inherit",
-      color: formData.dimension_id.includes(d.id) ? "white" : "inherit",
-      "&:hover": {
-        backgroundColor: formData.dimension_id.includes(d.id)
-          ? "#4338CA" // darker shade on hover
-          : "rgba(79,70,229,0.1)",
-      },
-    }}
-  >
-    {d.name}
-  </MenuItem>
-))}
-
+                  {dimensions.map((d) => (
+                    <MenuItem key={d.id} value={d.id}>
+                      {d.name}
+                    </MenuItem>
+                  ))}
                 </TextField>
               </Grid>
 
+              {/* ✅ School Selector */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   select
@@ -197,55 +206,18 @@ export default function ActivityUpload() {
                       handleMultiSelectChange("school_id", e.target.value),
                   }}
                   label="School"
-                  name="school_id"
                   required
-                  size="medium"
-                  helperText="Select one or more Schools to send this activity to"
-                  sx={{
-                    "& .MuiInputBase-root": { height: 60, fontSize: "1rem" },
-                  }}
                 >
-               {schools.map((s) => (
-  <MenuItem
-    key={s.id}
-    value={s.id}
-    sx={{
-      backgroundColor: formData.school_id.includes(s.id)
-        ? "#4F46E5"
-        : "inherit",
-      color: formData.school_id.includes(s.id) ? "white" : "inherit",
-      "&:hover": {
-        backgroundColor: formData.school_id.includes(s.id)
-          ? "#4338CA"
-          : "rgba(79,70,229,0.1)",
-      },
-    }}
-  >
-    {s.name}
-  </MenuItem>
-))}
-
+                  {schools.map((s) => (
+                    <MenuItem key={s.id} value={s.id}>
+                      {s.name}
+                    </MenuItem>
+                  ))}
                 </TextField>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  type="number"
-                  fullWidth
-                  label="Suggested Grade"
-                  name="suggested_grade"
-                  value={formData.suggested_grade}
-                  onChange={handleChange}
-                  inputProps={{ min: 0, max: 12 }}
-                  size="medium"
-                  helperText="Select which Grade"
-                  sx={{
-                    "& .MuiInputBase-root": { height: 60, fontSize: "1rem" },
-                  }}
-                />
               </Grid>
             </Grid>
 
+            {/* ✅ Weight Slider */}
             <Typography mt={3} fontWeight={500}>
               Weight / Contribution (%)
             </Typography>
@@ -257,29 +229,22 @@ export default function ActivityUpload() {
               min={0}
               max={100}
               valueLabelDisplay="auto"
-              sx={{ color: "primary.main" }}
             />
 
+            {/* ✅ File Upload */}
             <Button variant="outlined" component="label" sx={{ mt: 3 }}>
               Upload File / Image
               <input type="file" hidden name="file" onChange={handleChange} />
             </Button>
 
-            {formData.file && (
-              <Typography mt={1} variant="body2" color="text.secondary">
-                ✅ File selected: {formData.file.name}
-              </Typography>
-            )}
-
+            {/* ✅ Progress Bar */}
             {uploading && (
               <Box mt={2}>
                 <LinearProgress variant="determinate" value={uploadProgress} />
-                <Typography variant="body2" align="center" mt={1}>
-                  Uploading... {uploadProgress}%
-                </Typography>
               </Box>
             )}
 
+            {/* ✅ Submit Button */}
             <Button
               type="submit"
               variant="contained"
@@ -291,6 +256,7 @@ export default function ActivityUpload() {
               Submit Activity
             </Button>
 
+            {/* ✅ Message */}
             {message && (
               <Typography mt={2} color="secondary">
                 {message}

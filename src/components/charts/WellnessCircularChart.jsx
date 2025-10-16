@@ -20,21 +20,16 @@ const WellnessCircularChart = ({ schoolId, month }) => {
       try {
         setLoading(true);
 
-        // ✅ Ensure month format is YYYY-MM (e.g. 2025-10)
-        const formattedMonth = month.slice(0, 7);
-
+        const formattedMonth = month.slice(0, 7); // YYYY-MM format
         const url = `http://localhost/wellness-backend/get_wellness_percentage.php?school_id=${schoolId}&month=${formattedMonth}`;
         console.log("Fetching:", url);
 
         const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
         console.log("API result:", result);
 
-        // ✅ Handle if PHP returns array or object
         const dataArray = Array.isArray(result)
           ? result
           : result?.data || [];
@@ -47,7 +42,6 @@ const WellnessCircularChart = ({ schoolId, month }) => {
           }));
           setData(formattedData);
         } else {
-          console.warn("No data found in response");
           setData([]);
         }
       } catch (error) {
@@ -86,7 +80,7 @@ const WellnessCircularChart = ({ schoolId, month }) => {
           data={data}
           dataKey="value"
           nameKey="name"
-          outerRadius={100}
+          outerRadius={45}   // ✅ same as your original static chart
           label
         >
           {data.map((entry, index) => (
