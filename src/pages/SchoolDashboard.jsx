@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Grid,
@@ -11,6 +11,7 @@ import {
   Chip,
   Divider,
   Tooltip,
+  CircularProgress,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -28,10 +29,8 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { useNavigate } from "react-router-dom"; // ✅ Added for navigation
-import CustomThemeProvider from "../theme/ThemeProvider";
+import { useNavigate } from "react-router-dom";
 
-// --------- Dummy data (replace with real API data) ---------
 const DIMENSIONS = [
   { key: "emotional", label: "Emotional", color: "#FB7185" },
   { key: "physical", label: "Physical", color: "#F97316" },
@@ -43,72 +42,6 @@ const DIMENSIONS = [
   { key: "vocational", label: "Vocational", color: "#4F46E5" },
 ];
 
-const monthStats = [
-  {
-    month: "Jan",
-    emotional: 60,
-    physical: 70,
-    social: 55,
-    intellectual: 65,
-    spiritual: 50,
-    financial: 45,
-    environmental: 72,
-    vocational: 58,
-  },
-  {
-    month: "Feb",
-    emotional: 62,
-    physical: 68,
-    social: 60,
-    intellectual: 66,
-    spiritual: 52,
-    financial: 50,
-    environmental: 70,
-    vocational: 60,
-  },
-  {
-    month: "Mar",
-    emotional: 55,
-    physical: 74,
-    social: 58,
-    intellectual: 67,
-    spiritual: 57,
-    financial: 54,
-    environmental: 75,
-    vocational: 65,
-  },
-  {
-    month: "Apr",
-    emotional: 70,
-    physical: 78,
-    social: 65,
-    intellectual: 72,
-    spiritual: 60,
-    financial: 62,
-    environmental: 80,
-    vocational: 72,
-  },
-  {
-    month: "May",
-    emotional: 68,
-    physical: 75,
-    social: 70,
-    intellectual: 74,
-    spiritual: 63,
-    financial: 66,
-    environmental: 78,
-    vocational: 75,
-  },
-];
-
-const makePieData = (latestObj) =>
-  DIMENSIONS.map((d) => ({
-    name: d.label,
-    value: latestObj[d.key],
-    color: d.color,
-  }));
-
-// --------- Utility: CSV export ---------
 function exportToCSV(filename, rows) {
   if (!rows || !rows.length) return;
   const keys = Object.keys(rows[0]);
@@ -156,17 +89,108 @@ function StatCard({ title, value, subtitle, icon }) {
 }
 
 export default function SchoolDashboard() {
-  const [selectedMonthIndex, setSelectedMonthIndex] = useState(
-    monthStats.length - 1
-  );
-  const navigate = useNavigate(); // ✅ For navigation
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [monthStats, setMonthStats] = useState([]);
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState(0);
+  const [topActivities, setTopActivities] = useState([]);
+
+  // ✅ Get school_id from localStorage
+  const schoolId = localStorage.getItem("school_id");
+
+  useEffect(() => {
+    if (!schoolId) {
+      console.error("No school_id found");
+      navigate("/login");
+      return;
+    }
+
+    // ✅ Fetch wellness data and activities
+    const fetchData = async () => {
+      setLoading(true);
+      
+      try {
+        // Fetch wellness data for the last 5 months
+        const months = [];
+        const today = new Date();
+        
+        for (let i = 4; i >= 0; i--) {
+          const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          months.push({
+            monthStr,
+            label: d.toLocaleString('default', { month: 'short' })
+          });
+        }
+
+        const wellnessPromises = months.map(({ monthStr }) =>
+          fetch(`/get_wellness_percentage.php?school_id=${schoolId}&month=${monthStr}`)
+            .then(res => res.json())
+        );
+
+        const results = await Promise.all(wellnessPromises);
+        
+        // ✅ Transform API data to match chart format with all 8 dimensions
+        const transformedData = results.map((data, idx) => {
+          const monthData = { month: months[idx].label };
+          
+          // Initialize all dimensions to 0
+          DIMENSIONS.forEach(dim => {
+            monthData[dim.key] = 0;
+          });
+
+          // Fill in actual data from API
+          data.forEach(dim => {
+            const dimension = DIMENSIONS.find(d => d.label === dim.dimension_name);
+            if (dimension) {
+              monthData[dimension.key] = Math.round(dim.wellness_percentage || 0);
+            }
+          });
+
+          return monthData;
+        });
+
+        setMonthStats(transformedData);
+        setSelectedMonthIndex(transformedData.length - 1);
+
+        // ✅ Fetch activities for current month
+        const activitiesRes = await fetch(
+          `/get_school_activities.php?school_id=${schoolId}`
+        );
+        const activitiesData = await activitiesRes.json();
+        
+        // Get last 3 pending (not completed) activities
+        const pending = activitiesData
+          .filter(act => !act.completed)
+          .slice(-3)
+          .reverse();
+        
+        setTopActivities(pending);
+
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [schoolId, navigate]);
+
+  const makePieData = (latestObj) =>
+    DIMENSIONS.map((d) => ({
+      name: d.label,
+      value: latestObj?.[d.key] || 0,
+      color: d.color,
+    }));
 
   const pieData = useMemo(
-    () => makePieData(monthStats[selectedMonthIndex]),
-    [selectedMonthIndex]
+    () => monthStats.length > 0 ? makePieData(monthStats[selectedMonthIndex]) : [],
+    [monthStats, selectedMonthIndex]
   );
 
   const overallCompletion = useMemo(() => {
+    if (pieData.length === 0) return 0;
     const values = pieData.map((d) => d.value);
     const avg = Math.round(
       values.reduce((a, b) => a + b, 0) / values.length
@@ -175,6 +199,7 @@ export default function SchoolDashboard() {
   }, [pieData]);
 
   const weakest = useMemo(() => {
+    if (pieData.length === 0) return { name: "N/A", value: 0 };
     return pieData.reduce((a, b) => (a.value < b.value ? a : b));
   }, [pieData]);
 
@@ -185,6 +210,14 @@ export default function SchoolDashboard() {
       {}
     ),
   }));
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box p={{ xs: 2, md: 4 }}>
@@ -212,14 +245,13 @@ export default function SchoolDashboard() {
       </Box>
 
       <Grid container spacing={3}>
-        {/* LEFT COLUMN */}
         <Grid item xs={12} md={4}>
           <Grid container spacing={2}>
             <Grid item xs={12}>
               <StatCard
                 title="Overall Wellness"
                 value={`${overallCompletion}%`}
-                subtitle={`As of ${monthStats[selectedMonthIndex].month}`}
+                subtitle={monthStats.length > 0 ? `As of ${monthStats[selectedMonthIndex]?.month}` : ""}
                 icon={<PieChartIcon />}
               />
             </Grid>
@@ -321,7 +353,6 @@ export default function SchoolDashboard() {
           </Grid>
         </Grid>
 
-        {/* RIGHT COLUMN */}
         <Grid item xs={12} md={8}>
           <Grid container spacing={2}>
             <Grid item xs={12}>
@@ -343,6 +374,7 @@ export default function SchoolDashboard() {
                           setSelectedMonthIndex((i) => Math.max(0, i - 1))
                         }
                         sx={{ mr: 1 }}
+                        disabled={selectedMonthIndex === 0}
                       >
                         Prev
                       </Button>
@@ -353,6 +385,7 @@ export default function SchoolDashboard() {
                             Math.min(monthStats.length - 1, i + 1)
                           )
                         }
+                        disabled={selectedMonthIndex === monthStats.length - 1}
                       >
                         Next
                       </Button>
@@ -369,7 +402,7 @@ export default function SchoolDashboard() {
                         <XAxis dataKey="month" />
                         <YAxis />
                         <ReTooltip />
-                        {DIMENSIONS.slice(0, 4).map((d) => (
+                        {DIMENSIONS.map((d) => (
                           <Line
                             key={d.key}
                             type="monotone"
@@ -377,6 +410,7 @@ export default function SchoolDashboard() {
                             stroke={d.color}
                             strokeWidth={2}
                             dot={false}
+                            name={d.label}
                           />
                         ))}
                       </LineChart>
@@ -386,7 +420,6 @@ export default function SchoolDashboard() {
               </Card>
             </Grid>
 
-            {/* ✅ Clickable Top Activities Card */}
             <Grid item xs={12}>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
@@ -399,7 +432,7 @@ export default function SchoolDashboard() {
                       transition: "0.2s",
                       "&:hover": { boxShadow: 6, transform: "scale(1.01)" },
                     }}
-                    onClick={() => navigate("/school-activity")} // ✅ Navigation added
+                    onClick={() => navigate("/school-activity")}
                   >
                     <CardContent>
                       <Typography variant="subtitle2" color="text.secondary">
@@ -409,40 +442,33 @@ export default function SchoolDashboard() {
                         variant="h6"
                         sx={{ fontWeight: 700, mb: 2 }}
                       >
-                        Completed by your school
+                        Pending activities
                       </Typography>
 
                       <Box display="flex" flexDirection="column" gap={1}>
-                        <Box
-                          display="flex"
-                          justifyContent="space-between"
-                          alignItems="center"
-                        >
-                          <Typography>Peer Support Circles</Typography>
-                          <Chip label="Completed" size="small" />
-                        </Box>
-
-                        <Box
-                          display="flex"
-                          justifyContent="space-between"
-                          alignItems="center"
-                        >
-                          <Typography>Weekly Sports Sessions</Typography>
-                          <Chip label="Completed" size="small" />
-                        </Box>
-
-                        <Box
-                          display="flex"
-                          justifyContent="space-between"
-                          alignItems="center"
-                        >
-                          <Typography>Career Awareness Workshops</Typography>
-                          <Chip
-                            label="Needs Evidence"
-                            size="small"
-                            color="warning"
-                          />
-                        </Box>
+                        {topActivities.length > 0 ? (
+                          topActivities.map((activity, index) => (
+                            <Box
+                              key={activity.school_activity_id}
+                              display="flex"
+                              justifyContent="space-between"
+                              alignItems="center"
+                            >
+                              <Typography noWrap sx={{ maxWidth: '70%' }}>
+                                {activity.title}
+                              </Typography>
+                              <Chip 
+                                label="Pending" 
+                                size="small" 
+                                color="warning"
+                              />
+                            </Box>
+                          ))
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No pending activities
+                          </Typography>
+                        )}
                       </Box>
                     </CardContent>
                   </Card>

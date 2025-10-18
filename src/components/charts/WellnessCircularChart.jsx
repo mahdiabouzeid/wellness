@@ -21,7 +21,7 @@ const WellnessCircularChart = ({ schoolId, month }) => {
         setLoading(true);
 
         const formattedMonth = month.slice(0, 7); // YYYY-MM format
-        const url = `http://localhost/wellness-backend/get_wellness_percentage.php?school_id=${schoolId}&month=${formattedMonth}`;
+        const url = `/get_wellness_percentage.php?school_id=${schoolId}&month=${formattedMonth}`;
         console.log("Fetching:", url);
 
         const response = await fetch(url);

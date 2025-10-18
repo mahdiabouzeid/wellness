@@ -17,7 +17,7 @@ export default function SchoolActivitiesPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("http://localhost/wellness-backend/get_schools.php")
+    fetch("/get_schools.php")
       .then((res) => res.json())
       .then((data) => setSchools(data))
       .catch((err) => console.error("Error fetching schools:", err));
@@ -27,7 +27,7 @@ export default function SchoolActivitiesPage() {
     if (!selectedSchool) return;
     setLoading(true);
 
-    fetch(`http://localhost/wellness-backend/get_school_activities.php?school_id=${selectedSchool}`)
+    fetch(`/get_school_activities.php?school_id=${selectedSchool}`)
       .then((res) => res.json())
       .then((data) => setActivities(data))
       .catch((err) => console.error("Error fetching activities:", err))
@@ -35,7 +35,7 @@ export default function SchoolActivitiesPage() {
   };
 
   const confirmActivity = (id) => {
-    fetch("http://localhost/wellness-backend/confirm_activity.php", {
+    fetch("/confirm_activity.php", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

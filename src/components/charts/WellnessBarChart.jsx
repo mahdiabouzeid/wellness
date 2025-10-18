@@ -25,7 +25,7 @@ const WellnessBarChart = ({ schoolId, month }) => {
         // ✅ Ensure month format is YYYY-MM (like "2025-10")
         const formattedMonth = month.slice(0, 7);
 
-        const url = `http://localhost/wellness-backend/get_wellness_percentage.php?school_id=${schoolId}&month=${formattedMonth}`;
+        const url = `/get_wellness_percentage.php?school_id=${schoolId}&month=${formattedMonth}`;
         console.log("Fetching:", url);
 
         const response = await fetch(url);

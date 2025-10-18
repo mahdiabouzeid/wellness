@@ -19,7 +19,7 @@ export default function DimensionsManager() {
 
   // Fetch all dimensions
   useEffect(() => {
-    fetch("http://localhost/wellness-backend/get_dimensions.php")
+    fetch("/get_dimensions.php")
       .then((res) => res.json())
       .then((data) => {
         setDimensions(data);
@@ -42,7 +42,7 @@ export default function DimensionsManager() {
     setUpdating(id);
     try {
       const res = await fetch(
-        "http://localhost/wellness-backend/update_dimension_color.php",
+        "/update_dimension_color.php",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

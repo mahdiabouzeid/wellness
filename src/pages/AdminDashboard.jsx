@@ -45,11 +45,12 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const res = await fetch("http://localhost/wellness-backend/get_schools.php");
+        const res = await fetch("/get_schools.php");
         const data = await res.json();
         setSchools(data);
         if (data.length > 0) setSelectedSchool(data[0].id);
       } catch (err) {
+        console.log(err)
         console.error("Error fetching schools:", err);
       } finally {
         setLoadingSchools(false);

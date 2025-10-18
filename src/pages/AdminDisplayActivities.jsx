@@ -35,7 +35,7 @@ export default function AdminDisplayActivities() {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const res = await axios.get("http://localhost/wellness-backend/get_schools.php");
+        const res = await axios.get("/get_schools.php");
         setSchools(res.data);
       } catch (err) {
         console.error("Error fetching schools:", err);
@@ -49,7 +49,7 @@ export default function AdminDisplayActivities() {
     if (!selectedSchool || !selectedMonth) return;
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost/wellness-backend/display-activities.php", {
+      const res = await axios.get("/display-activities.php", {
         params: { school_id: selectedSchool, month: selectedMonth },
       });
       if (res.data.success) {
@@ -72,7 +72,7 @@ export default function AdminDisplayActivities() {
       formData.append("confirmed", currentStatus ? 0 : 1);
 
       const res = await axios.post(
-        "http://localhost/wellness-backend/confirm_activity.php",
+        "/confirm_activity.php",
         formData
       );
 

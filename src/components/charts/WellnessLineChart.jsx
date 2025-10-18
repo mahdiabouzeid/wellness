@@ -74,7 +74,7 @@ const WellnessLineChart = ({ schoolId, onDataLoaded }) => {
       const responses = await Promise.all(
         months.map((month) =>
           fetch(
-            `http://localhost/wellness-backend/get_wellness_percentage.php?school_id=${schoolId}&month=${month}`
+            `/get_wellness_percentage.php?school_id=${schoolId}&month=${month}`
           )
             .then((res) => res.json())
             .then((res) => ({ month, data: res }))

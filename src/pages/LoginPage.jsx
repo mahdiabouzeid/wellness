@@ -10,14 +10,13 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
+    
     try {
-      const response = await fetch("http://localhost/wellness-backend/login.php", {
+      const response = await fetch("/login.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -30,7 +29,10 @@ const LoginPage = () => {
         // Store token and user in localStorage
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
-
+           // ✅ Store school_id if user is a school_leader
+           if (data.user.school_id) {
+            localStorage.setItem("school_id", data.user.school_id);
+          }
         // Navigate based on role
         if (data.user.role === "admin") {
           navigate("/admin-dashboard");

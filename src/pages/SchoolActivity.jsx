@@ -18,7 +18,7 @@ export default function SchoolActivity() {
   const [loading, setLoading] = useState(true);
 
   // For demo: replace with logged-in user's school_id from context or auth
-  const schoolId = 1;
+  const schoolId = localStorage.getItem("school_id");
 
   useEffect(() => {
     const fetchActivities = async () => {

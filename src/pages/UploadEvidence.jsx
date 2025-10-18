@@ -37,7 +37,7 @@ export default function UploadEvidence() {
 
     try {
       setLoading(true);
-      const response = await fetch("http://localhost/wellness-backend/upload-school-activity.php", {
+      const response = await fetch("/upload-school-activity.php", {
         method: "POST",
         body: formData,
       });

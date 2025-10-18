@@ -32,12 +32,12 @@ export default function ActivityUpload() {
 
   // ✅ Fetch dropdown data
   useEffect(() => {
-    fetch("http://localhost/wellness-backend/get_dimensions.php")
+    fetch("/get_dimensions.php")
       .then((res) => res.json())
       .then(setDimensions)
       .catch(console.error);
 
-    fetch("http://localhost/wellness-backend/get_schools.php")
+    fetch("/get_schools.php")
       .then((res) => res.json())
       .then(setSchools)
       .catch(console.error);
@@ -79,7 +79,7 @@ export default function ActivityUpload() {
     data.append("created_by", 1);
 
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "http://localhost/wellness-backend/upload_activity.php", true);
+    xhr.open("POST", "/upload_activity.php", true);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
