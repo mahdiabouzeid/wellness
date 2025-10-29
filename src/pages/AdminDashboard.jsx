@@ -37,9 +37,10 @@ const AdminDashboard = () => {
   const [loadingSchools, setLoadingSchools] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  const [notifications, setNotifications] = useState([]);
+  const [activeNotification, setActiveNotification] = useState(null);
+
+  const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
   // === Fetch schools from backend ===
   useEffect(() => {
@@ -50,7 +51,6 @@ const AdminDashboard = () => {
         setSchools(data);
         if (data.length > 0) setSelectedSchool(data[0].id);
       } catch (err) {
-        console.log(err)
         console.error("Error fetching schools:", err);
       } finally {
         setLoadingSchools(false);
@@ -59,9 +59,49 @@ const AdminDashboard = () => {
     fetchSchools();
   }, []);
 
+  // === Fetch notifications from backend ===
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch("/get_notifications.php");
+        const data = await res.json();
+
+        // Find unread + not yet shown notifications
+        const newOnes = data.filter(
+          (n) => !notifications.find((old) => old.id === n.id) && !n.isread
+        );
+
+        if (newOnes.length > 0) {
+          const newest = newOnes[0];
+          setActiveNotification(newest);
+          setNotifications([...notifications, ...newOnes]);
+
+          // Mark notification as read in DB
+          fetch("/mark_notification_read.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `id=${newest.id}`,
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching notifications:", err);
+      }
+    };
+
+    // Poll every 5 seconds
+    const interval = setInterval(fetchNotifications, 1000);
+    fetchNotifications(); // initial load
+
+    return () => clearInterval(interval);
+  }, [notifications]);
+
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#F5F6FA" }}>
-      <Notification />
+      {activeNotification && (
+        <Notification
+          message={`🏫 ${activeNotification.school_name}: ${activeNotification.message}`}
+        />
+      )}
 
       {/* Sidebar for desktop */}
       <Box
@@ -252,12 +292,11 @@ const AdminDashboard = () => {
               </Paper>
             </Grid>
 
-            {/* Circular Chart (Bigger Container) */}
             <Grid item xs={12} md={6}>
               <Paper
                 sx={{
-                  width:"110%",
-                  ml:'-5%',
+                  width: "110%",
+                  ml: "-5%",
                   p: 3,
                   borderRadius: 3,
                   boxShadow: "0px 4px 12px rgba(0,0,0,0.05)",
@@ -268,7 +307,7 @@ const AdminDashboard = () => {
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  minHeight: 400, // ⬅ increased height
+                  minHeight: 400,
                 }}
               >
                 <Typography
@@ -280,7 +319,7 @@ const AdminDashboard = () => {
                 <Box
                   sx={{
                     width: "100%",
-                    height: 380, // ⬅ enlarged chart area
+                    height: 380,
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
