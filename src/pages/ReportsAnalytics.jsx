@@ -18,6 +18,8 @@ const Reports = () => {
   const [schools, setSchools] = useState([]);
   const [selectedSchool, setSelectedSchool] = useState("");
   const [loadingSchools, setLoadingSchools] = useState(true);
+
+  // ✅ this will be EXACTLY what the chart is showing
   const [chartData, setChartData] = useState([]);
 
   // Fetch schools
@@ -37,14 +39,38 @@ const Reports = () => {
     fetchSchools();
   }, []);
 
-  // Excel Export
+  // ✅ clear old data immediately when school changes (prevents exporting previous school)
+  useEffect(() => {
+    setChartData([]);
+  }, [selectedSchool]);
+
+  // Excel Export (EXPORT WHAT YOU SEE)
   const exportToExcel = () => {
-    if (!chartData.length) {
+    if (!chartData || chartData.length === 0) {
       alert("No data available to export.");
       return;
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(chartData);
+    // force stable column order: Month first, then the rest
+    const headers = ["Month", ...Object.keys(chartData[0]).filter((k) => k !== "Month")];
+
+    const worksheet = XLSX.utils.json_to_sheet(chartData, { header: headers });
+
+    // set widths (optional, keeps it clean)
+    worksheet["!cols"] = headers.map((h) => ({ wch: Math.max(12, h.length + 2) }));
+
+    // format % columns if values look like 0..100
+    const percentCols = headers.slice(1); // all except Month
+    chartData.forEach((_, r) => {
+      percentCols.forEach((_, c) => {
+        const cellRef = XLSX.utils.encode_cell({ r: r + 1, c: c + 1 });
+        if (worksheet[cellRef] && typeof worksheet[cellRef].v === "number") {
+          worksheet[cellRef].v = worksheet[cellRef].v / 100;
+          worksheet[cellRef].z = "0%";
+        }
+      });
+    });
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Wellness Report");
 
@@ -53,7 +79,7 @@ const Reports = () => {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
 
-    saveAs(blob, `Wellness_Report_${new Date().toISOString().split("T")[0]}.xlsx`);
+    saveAs(blob, `Wellness_Report_${selectedSchool}_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
   return (
@@ -100,18 +126,19 @@ const Reports = () => {
               variant="contained"
               color="primary"
               onClick={exportToExcel}
-              disabled={!chartData.length}
+              disabled={!chartData.length} // ✅ only enable when chart has loaded
             >
               Export to Excel
             </Button>
           </Box>
         </Box>
 
-        {/* Chart */}
+        {/* Chart (UI unchanged) */}
         {selectedSchool ? (
           <WellnessLineChart
             schoolId={selectedSchool}
-            
+            // ✅ chart will call this once it has the exact data it is rendering
+            onDataReady={(data) => setChartData(Array.isArray(data) ? data : [])}
           />
         ) : (
           <Typography sx={{ mt: 3, color: "text.secondary" }}>
@@ -122,5 +149,5 @@ const Reports = () => {
     </Box>
   );
 };
-//working NOW
+
 export default Reports;

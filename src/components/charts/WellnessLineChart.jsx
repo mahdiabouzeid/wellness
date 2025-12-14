@@ -51,18 +51,18 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-const WellnessLineChart = ({ schoolId, onDataLoaded }) => {
+const WellnessLineChart = ({ schoolId, onDataReady }) => {
   const [monthStats, setMonthStats] = useState([]);
   const [DIMENSIONS, setDIMENSIONS] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentWindowEnd, setCurrentWindowEnd] = useState(new Date());
 
-  // ✅ Fetch data for range of months
+  // ---------------- Fetch data ----------------
   const fetchData = async (startDate, endDate) => {
     try {
       setLoading(true);
 
-      // Generate list of months between startDate and endDate
+      // Generate months YYYY-MM
       const months = [];
       const temp = new Date(startDate);
       while (temp <= endDate) {
@@ -70,7 +70,7 @@ const WellnessLineChart = ({ schoolId, onDataLoaded }) => {
         temp.setMonth(temp.getMonth() + 1);
       }
 
-      // Fetch data for each month
+      // Fetch each month
       const responses = await Promise.all(
         months.map((month) =>
           fetch(
@@ -81,7 +81,7 @@ const WellnessLineChart = ({ schoolId, onDataLoaded }) => {
         )
       );
 
-      // Collect all unique dimensions (to ensure consistent keys)
+      // Collect all dimensions
       const allDims = {};
       responses.forEach(({ data }) => {
         if (Array.isArray(data)) {
@@ -91,22 +91,22 @@ const WellnessLineChart = ({ schoolId, onDataLoaded }) => {
         }
       });
 
-      // Normalize each month's data (fill missing dimensions with 0)
+      // Format chart rows
       const formattedData = responses.map(({ month, data }) => {
         const label = new Date(month + "-01").toLocaleString("default", {
           month: "short",
         });
+
         const entry = { month: label };
 
-        // Default all dimensions to 0
         Object.keys(allDims).forEach((dim) => {
           entry[dim] = 0;
         });
 
-        // Fill actual values
         if (Array.isArray(data)) {
           data.forEach((d) => {
-            entry[d.dimension_name] = parseFloat(d.wellness_percentage) || 0;
+            entry[d.dimension_name] =
+              parseFloat(d.wellness_percentage) || 0;
           });
         }
 
@@ -118,7 +118,18 @@ const WellnessLineChart = ({ schoolId, onDataLoaded }) => {
         Object.entries(allDims).map(([key, color]) => ({ key, color }))
       );
 
-      if (onDataLoaded) onDataLoaded(formattedData);
+      // 🔑 IMPORTANT: send EXACT displayed data for Excel export
+      if (onDataReady) {
+        const exportSafeData = formattedData.map((row) => {
+          const out = { Month: row.month };
+          Object.keys(row).forEach((k) => {
+            if (k !== "month") out[k] = row[k];
+          });
+          return out;
+        });
+
+        onDataReady(exportSafeData);
+      }
     } catch (err) {
       console.error("Error loading chart data:", err);
     } finally {
@@ -126,22 +137,26 @@ const WellnessLineChart = ({ schoolId, onDataLoaded }) => {
     }
   };
 
-  // ✅ Initial fetch (latest 6 months)
+  // ---------------- Initial fetch (latest 6 months) ----------------
   useEffect(() => {
     if (!schoolId) return;
+
     const end = new Date();
     const start = new Date();
     start.setMonth(start.getMonth() - 5);
+
     setCurrentWindowEnd(end);
     fetchData(start, end);
   }, [schoolId]);
 
-  // ✅ Prev / Next buttons
+  // ---------------- Prev / Next ----------------
   const handlePrev = () => {
     const newEnd = new Date(currentWindowEnd);
     newEnd.setMonth(newEnd.getMonth() - 6);
+
     const newStart = new Date(newEnd);
     newStart.setMonth(newStart.getMonth() - 5);
+
     setCurrentWindowEnd(newEnd);
     fetchData(newStart, newEnd);
   };
@@ -151,21 +166,22 @@ const WellnessLineChart = ({ schoolId, onDataLoaded }) => {
     const newEnd = new Date(currentWindowEnd);
     newEnd.setMonth(newEnd.getMonth() + 6);
 
-    // Prevent going beyond current month
     if (newEnd > today) {
+      const start = new Date();
+      start.setMonth(today.getMonth() - 5);
       setCurrentWindowEnd(today);
-      const newStart = new Date();
-      newStart.setMonth(today.getMonth() - 5);
-      fetchData(newStart, today);
+      fetchData(start, today);
       return;
     }
 
     const newStart = new Date(newEnd);
     newStart.setMonth(newStart.getMonth() - 5);
+
     setCurrentWindowEnd(newEnd);
     fetchData(newStart, newEnd);
   };
 
+  // ---------------- UI states ----------------
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" height={350}>
@@ -184,8 +200,8 @@ const WellnessLineChart = ({ schoolId, onDataLoaded }) => {
     );
   }
 
-  const windowRange = `${monthStats[0]?.month || ""} → ${
-    monthStats[monthStats.length - 1]?.month || ""
+  const windowRange = `${monthStats[0]?.month} → ${
+    monthStats[monthStats.length - 1]?.month
   }`;
 
   return (
@@ -235,7 +251,7 @@ const WellnessLineChart = ({ schoolId, onDataLoaded }) => {
                   strokeWidth={2.5}
                   dot={{ r: 3, fill: d.color }}
                   activeDot={{ r: 5 }}
-                  connectNulls={true} // ✅ keeps line continuous
+                  connectNulls
                 />
               ))}
             </LineChart>
