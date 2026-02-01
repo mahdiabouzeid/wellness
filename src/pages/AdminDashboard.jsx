@@ -39,7 +39,9 @@ const AdminDashboard = () => {
 
   const [notifications, setNotifications] = useState([]);
   const [activeNotification, setActiveNotification] = useState(null);
-
+  const [recommendation, setRecommendation] = useState("");
+  const [saving, setSaving] = useState(false);
+  
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
   // === Fetch schools from backend ===
@@ -94,6 +96,46 @@ const AdminDashboard = () => {
 
     return () => clearInterval(interval);
   }, [notifications]);
+  useEffect(() => {
+    if (!selectedSchool || !month) return;
+  
+    const fetchRecommendation = async () => {
+      try {
+        const res = await fetch(
+          `/get_recommendation.php?school_id=${selectedSchool}&month=${month}`
+        );
+        const data = await res.json();
+        setRecommendation(data.recommendation_text || "");
+      } catch (err) {
+        console.error(err);
+      }
+    };
+  
+    fetchRecommendation();
+  }, [selectedSchool, month]);
+  const handleSaveRecommendation = async () => {
+    if (!selectedSchool || !month) return;
+  
+    setSaving(true);
+  
+    try {
+      await fetch("/save_recommendation.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: `school_id=${selectedSchool}&month=${month}&recommendation_text=${encodeURIComponent(
+          recommendation
+        )}`,
+      });
+      alert("Recommendation saved successfully");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+    
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#F5F6FA" }}>
@@ -345,7 +387,15 @@ const AdminDashboard = () => {
         {/* === Recommendations === */}
         <Grid container spacing={3} sx={{ mt: 1 }}>
           <Grid item xs={12}>
-            <RecommendationCard />
+          <RecommendationCard
+  selectedSchool={selectedSchool}
+  month={month}
+  recommendation={recommendation}
+  setRecommendation={setRecommendation}
+  handleSaveRecommendation={handleSaveRecommendation}
+  saving={saving}
+/>
+
           </Grid>
         </Grid>
       </Box>
