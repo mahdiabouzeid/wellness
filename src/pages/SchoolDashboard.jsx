@@ -32,25 +32,21 @@ import {
 import { useNavigate } from "react-router-dom";
 
 const DIMENSIONS = [
-  { key: "emotional", label: "Emotional", color: "#FB7185" },
-  { key: "physical", label: "Physical", color: "#F97316" },
-  { key: "social", label: "Social", color: "#FACC15" },
-  { key: "intellectual", label: "Intellectual", color: "#60A5FA" },
-  { key: "spiritual", label: "Spiritual", color: "#A78BFA" },
-  { key: "financial", label: "Financial", color: "#10B981" },
-  { key: "environmental", label: "Environmental", color: "#34D399" },
-  { key: "vocational", label: "Vocational", color: "#4F46E5" },
+  { key: "emotional", label: "Emotional", color: "#F97316" },
+  { key: "physical", label: "Physical", color: "#FB7185" },
+  { key: "social", label: "Social", color: "#EAB308" },
+  { key: "intellectual", label: "Intellectual", color: "#38BDF8" },
+  { key: "spiritual", label: "Spiritual", color: "#8B5CF6" },
+  { key: "financial", label: "Financial", color: "#22C55E" },
+  { key: "environmental", label: "Environmental", color: "#14B8A6" },
+  { key: "vocational", label: "Vocational", color: "#0F766E" },
 ];
 
 function exportToCSV(filename, rows) {
   if (!rows || !rows.length) return;
   const keys = Object.keys(rows[0]);
   const csv = [keys.join(",")]
-    .concat(
-      rows.map((r) =>
-        keys.map((k) => `"${String(r[k] ?? "")}"`).join(",")
-      )
-    )
+    .concat(rows.map((row) => keys.map((key) => `"${String(row[key] ?? "")}"`).join(",")))
     .join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
@@ -65,23 +61,32 @@ function exportToCSV(filename, rows) {
 
 function StatCard({ title, value, subtitle, icon }) {
   return (
-    <Card elevation={2} sx={{ borderRadius: 2 }}>
-      <CardContent>
+    <Card sx={{ height: "100%" }}>
+      <CardContent sx={{ p: 3 }}>
         <Box display="flex" alignItems="center" justifyContent="space-between">
           <Box>
             <Typography variant="subtitle2" color="text.secondary">
               {title}
             </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, mt: 1 }}>
               {value}
             </Typography>
             {subtitle && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
                 {subtitle}
               </Typography>
             )}
           </Box>
-          <Avatar sx={{ bgcolor: "transparent" }}>{icon}</Avatar>
+          <Avatar
+            sx={{
+              bgcolor: "rgba(15,118,110,0.12)",
+              color: "#0F766E",
+              width: 52,
+              height: 52,
+            }}
+          >
+            {icon}
+          </Avatar>
         </Box>
       </CardContent>
     </Card>
@@ -95,7 +100,6 @@ export default function SchoolDashboard() {
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(0);
   const [topActivities, setTopActivities] = useState([]);
 
-  // ✅ Get school_id from localStorage
   const schoolId = localStorage.getItem("school_id");
 
   useEffect(() => {
@@ -105,45 +109,41 @@ export default function SchoolDashboard() {
       return;
     }
 
-    // ✅ Fetch wellness data and activities
     const fetchData = async () => {
       setLoading(true);
-      
+
       try {
-        // Fetch wellness data for the last 5 months
         const months = [];
         const today = new Date();
-        
-        for (let i = 4; i >= 0; i--) {
-          const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-          const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+        for (let i = 4; i >= 0; i -= 1) {
+          const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
           months.push({
             monthStr,
-            label: d.toLocaleString('default', { month: 'short' })
+            label: date.toLocaleString("default", { month: "short" }),
           });
         }
 
         const wellnessPromises = months.map(({ monthStr }) =>
-          fetch(`/get_wellness_percentage.php?school_id=${schoolId}&month=${monthStr}`)
-            .then(res => res.json())
+          fetch(`/get_wellness_percentage.php?school_id=${schoolId}&month=${monthStr}`).then((res) =>
+            res.json()
+          )
         );
 
         const results = await Promise.all(wellnessPromises);
-        
-        // ✅ Transform API data to match chart format with all 8 dimensions
-        const transformedData = results.map((data, idx) => {
-          const monthData = { month: months[idx].label };
-          
-          // Initialize all dimensions to 0
-          DIMENSIONS.forEach(dim => {
-            monthData[dim.key] = 0;
+
+        const transformedData = results.map((data, index) => {
+          const monthData = { month: months[index].label };
+
+          DIMENSIONS.forEach((dimension) => {
+            monthData[dimension.key] = 0;
           });
 
-          // Fill in actual data from API
-          data.forEach(dim => {
-            const dimension = DIMENSIONS.find(d => d.label === dim.dimension_name);
-            if (dimension) {
-              monthData[dimension.key] = Math.round(dim.wellness_percentage || 0);
+          data.forEach((dimension) => {
+            const match = DIMENSIONS.find((item) => item.label === dimension.dimension_name);
+            if (match) {
+              monthData[match.key] = Math.round(dimension.wellness_percentage || 0);
             }
           });
 
@@ -153,20 +153,11 @@ export default function SchoolDashboard() {
         setMonthStats(transformedData);
         setSelectedMonthIndex(transformedData.length - 1);
 
-        // ✅ Fetch activities for current month
-        const activitiesRes = await fetch(
-          `/get_school_activities.php?school_id=${schoolId}`
-        );
+        const activitiesRes = await fetch(`/get_school_activities.php?school_id=${schoolId}`);
         const activitiesData = await activitiesRes.json();
-        
-        // Get last 3 pending (not completed) activities
-        const pending = activitiesData
-          .filter(act => !act.completed)
-          .slice(-3)
-          .reverse();
-        
-        setTopActivities(pending);
 
+        const pending = activitiesData.filter((activity) => !activity.completed).slice(-3).reverse();
+        setTopActivities(pending);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -177,25 +168,22 @@ export default function SchoolDashboard() {
     fetchData();
   }, [schoolId, navigate]);
 
-  const makePieData = (latestObj) =>
-    DIMENSIONS.map((d) => ({
-      name: d.label,
-      value: latestObj?.[d.key] || 0,
-      color: d.color,
-    }));
-
   const pieData = useMemo(
-    () => monthStats.length > 0 ? makePieData(monthStats[selectedMonthIndex]) : [],
+    () =>
+      monthStats.length > 0
+        ? DIMENSIONS.map((dimension) => ({
+            name: dimension.label,
+            value: monthStats[selectedMonthIndex]?.[dimension.key] || 0,
+            color: dimension.color,
+          }))
+        : [],
     [monthStats, selectedMonthIndex]
   );
 
   const overallCompletion = useMemo(() => {
     if (pieData.length === 0) return 0;
-    const values = pieData.map((d) => d.value);
-    const avg = Math.round(
-      values.reduce((a, b) => a + b, 0) / values.length
-    );
-    return avg;
+    const values = pieData.map((item) => item.value);
+    return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
   }, [pieData]);
 
   const weakest = useMemo(() => {
@@ -203,12 +191,9 @@ export default function SchoolDashboard() {
     return pieData.reduce((a, b) => (a.value < b.value ? a : b));
   }, [pieData]);
 
-  const csvRows = monthStats.map((m) => ({
-    month: m.month,
-    ...DIMENSIONS.reduce(
-      (acc, d) => ({ ...acc, [d.label]: m[d.key] }),
-      {}
-    ),
+  const csvRows = monthStats.map((month) => ({
+    month: month.month,
+    ...DIMENSIONS.reduce((acc, dimension) => ({ ...acc, [dimension.label]: month[dimension.key] }), {}),
   }));
 
   if (loading) {
@@ -220,17 +205,44 @@ export default function SchoolDashboard() {
   }
 
   return (
-    <Box p={{ xs: 2, md: 4 }}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+    <Box className="page-shell">
+      <Box className="page-shell__hero">
+        <Box className="page-shell__hero-copy">
+          <Chip
+            label="School dashboard"
+            sx={{ mb: 2, color: "#0F3D39", backgroundColor: "rgba(244,255,253,0.9)" }}
+          />
+          <Typography variant="h3" sx={{ mb: 1 }}>
+            Your wellness snapshot, refined into a cleaner dashboard.
+          </Typography>
+          <Typography sx={{ color: "rgba(245,255,253,0.82)", maxWidth: 640 }}>
+            Review monthly movement across eight dimensions, export what you need, and focus
+            next actions on your weakest area.
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1.5,
+          mt: 3,
+          mb: 3,
+        }}
+      >
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          <Typography variant="h4" sx={{ mb: 0.5 }}>
             School Wellness Dashboard
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Overview of your school's monthly wellness across 8 dimensions
+            Overview of monthly wellness across all eight tracked dimensions.
           </Typography>
         </Box>
-        <Box display="flex" gap={1}>
+
+        <Box display="flex" gap={1} flexWrap="wrap">
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}
@@ -238,7 +250,7 @@ export default function SchoolDashboard() {
           >
             Export CSV
           </Button>
-          <Button variant="contained" startIcon={<AssessmentIcon />}>
+          <Button variant="contained" color="secondary" startIcon={<AssessmentIcon />}>
             Generate PDF
           </Button>
         </Box>
@@ -246,7 +258,7 @@ export default function SchoolDashboard() {
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
-          <Grid container spacing={2}>
+          <Grid container spacing={3}>
             <Grid item xs={12}>
               <StatCard
                 title="Overall Wellness"
@@ -257,19 +269,14 @@ export default function SchoolDashboard() {
             </Grid>
 
             <Grid item xs={12}>
-              <Card elevation={2} sx={{ borderRadius: 2 }}>
-                <CardContent>
-                  <Box
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="space-between"
-                    mb={1}
-                  >
+              <Card sx={{ height: "100%" }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
                     <Box>
                       <Typography variant="subtitle2" color="text.secondary">
                         Weakest Dimension
                       </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 800, mt: 1 }}>
                         {weakest.name}
                       </Typography>
                     </Box>
@@ -286,8 +293,8 @@ export default function SchoolDashboard() {
                           data={pieData}
                           dataKey="value"
                           nameKey="name"
-                          innerRadius={60}
-                          outerRadius={90}
+                          innerRadius={58}
+                          outerRadius={92}
                           paddingAngle={2}
                         >
                           {pieData.map((entry, index) => (
@@ -301,9 +308,9 @@ export default function SchoolDashboard() {
                   <Divider sx={{ my: 2 }} />
 
                   <Box display="flex" flexWrap="wrap" gap={1}>
-                    {pieData.map((d) => (
+                    {pieData.map((item) => (
                       <Box
-                        key={d.name}
+                        key={item.name}
                         display="flex"
                         alignItems="center"
                         gap={1}
@@ -313,15 +320,15 @@ export default function SchoolDashboard() {
                           sx={{
                             width: 12,
                             height: 12,
-                            bgcolor: d.color,
-                            borderRadius: 0.5,
+                            bgcolor: item.color,
+                            borderRadius: 1,
                           }}
                         />
                         <Typography variant="body2" noWrap>
-                          {d.name}
+                          {item.name}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {d.value}%
+                          {item.value}%
                         </Typography>
                       </Box>
                     ))}
@@ -331,21 +338,17 @@ export default function SchoolDashboard() {
             </Grid>
 
             <Grid item xs={12}>
-              <Card elevation={2} sx={{ borderRadius: 2 }}>
-                <CardContent>
-                  <Box
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="space-between"
-                  >
+              <Card>
+                <CardContent sx={{ p: 3 }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
                     <Typography variant="subtitle2" color="text.secondary">
                       Recommendation
                     </Typography>
                     <InfoOutlinedIcon fontSize="small" color="disabled" />
                   </Box>
 
-                  <Typography variant="body1" sx={{ mt: 1 }}>
-                    {`${weakest.name} is at ${weakest.value}%. Suggested focus: run 3 targeted activities next month.`}
+                  <Typography variant="body1" sx={{ mt: 1.5 }}>
+                    {`${weakest.name} is currently at ${weakest.value}%. Plan three targeted activities next month to strengthen that dimension.`}
                   </Typography>
                 </CardContent>
               </Card>
@@ -354,25 +357,23 @@ export default function SchoolDashboard() {
         </Grid>
 
         <Grid item xs={12} md={8}>
-          <Grid container spacing={2}>
+          <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Card elevation={2} sx={{ borderRadius: 2 }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Card>
+                <CardContent sx={{ p: 3 }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
                     <Box>
                       <Typography variant="subtitle2" color="text.secondary">
                         Monthly Trend
                       </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                        Progress by Dimension
+                      <Typography variant="h5" sx={{ fontWeight: 800, mt: 1 }}>
+                        Progress by dimension
                       </Typography>
                     </Box>
                     <Box>
                       <Button
                         size="small"
-                        onClick={() =>
-                          setSelectedMonthIndex((i) => Math.max(0, i - 1))
-                        }
+                        onClick={() => setSelectedMonthIndex((index) => Math.max(0, index - 1))}
                         sx={{ mr: 1 }}
                         disabled={selectedMonthIndex === 0}
                       >
@@ -381,8 +382,8 @@ export default function SchoolDashboard() {
                       <Button
                         size="small"
                         onClick={() =>
-                          setSelectedMonthIndex((i) =>
-                            Math.min(monthStats.length - 1, i + 1)
+                          setSelectedMonthIndex((index) =>
+                            Math.min(monthStats.length - 1, index + 1)
                           )
                         }
                         disabled={selectedMonthIndex === monthStats.length - 1}
@@ -394,23 +395,20 @@ export default function SchoolDashboard() {
 
                   <Box height={320} mt={2}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={monthStats}
-                        margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
+                      <LineChart data={monthStats} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                        <CartesianGrid stroke="rgba(16,42,39,0.08)" strokeDasharray="4 4" />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} />
+                        <YAxis axisLine={false} tickLine={false} />
                         <ReTooltip />
-                        {DIMENSIONS.map((d) => (
+                        {DIMENSIONS.map((dimension) => (
                           <Line
-                            key={d.key}
+                            key={dimension.key}
                             type="monotone"
-                            dataKey={d.key}
-                            stroke={d.color}
-                            strokeWidth={2}
+                            dataKey={dimension.key}
+                            stroke={dimension.color}
+                            strokeWidth={2.4}
                             dot={false}
-                            name={d.label}
+                            name={dimension.label}
                           />
                         ))}
                       </LineChart>
@@ -421,47 +419,42 @@ export default function SchoolDashboard() {
             </Grid>
 
             <Grid item xs={12}>
-              <Grid container spacing={2}>
+              <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                   <Card
-                    elevation={2}
                     sx={{
-                      borderRadius: 2,
                       height: "100%",
                       cursor: "pointer",
-                      transition: "0.2s",
-                      "&:hover": { boxShadow: 6, transform: "scale(1.01)" },
+                      transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                      "&:hover": {
+                        transform: "translateY(-4px)",
+                        boxShadow: "0 24px 50px rgba(16, 42, 39, 0.12)",
+                      },
                     }}
                     onClick={() => navigate("/school-activity")}
                   >
-                    <CardContent>
+                    <CardContent sx={{ p: 3 }}>
                       <Typography variant="subtitle2" color="text.secondary">
-                        Top Activities (This Month)
+                        Top Activities
                       </Typography>
-                      <Typography
-                        variant="h6"
-                        sx={{ fontWeight: 700, mb: 2 }}
-                      >
+                      <Typography variant="h5" sx={{ fontWeight: 800, mt: 1, mb: 2 }}>
                         Pending activities
                       </Typography>
 
-                      <Box display="flex" flexDirection="column" gap={1}>
+                      <Box display="flex" flexDirection="column" gap={1.25}>
                         {topActivities.length > 0 ? (
-                          topActivities.map((activity, index) => (
+                          topActivities.map((activity) => (
                             <Box
                               key={activity.school_activity_id}
                               display="flex"
                               justifyContent="space-between"
                               alignItems="center"
+                              gap={1}
                             >
-                              <Typography noWrap sx={{ maxWidth: '70%' }}>
+                              <Typography noWrap sx={{ maxWidth: "70%" }}>
                                 {activity.title}
                               </Typography>
-                              <Chip 
-                                label="Pending" 
-                                size="small" 
-                                color="warning"
-                              />
+                              <Chip label="Pending" size="small" color="warning" />
                             </Box>
                           ))
                         ) : (
@@ -475,19 +468,15 @@ export default function SchoolDashboard() {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Card elevation={2} sx={{ borderRadius: 2, height: "100%" }}>
-                    <CardContent>
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="space-between"
-                      >
+                  <Card sx={{ height: "100%" }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
                         <Box>
                           <Typography variant="subtitle2" color="text.secondary">
                             Activity Completion
                           </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            By Dimension
+                          <Typography variant="h5" sx={{ fontWeight: 800, mt: 1 }}>
+                            By dimension
                           </Typography>
                         </Box>
                         <IconButton>
@@ -496,9 +485,9 @@ export default function SchoolDashboard() {
                       </Box>
 
                       <Box mt={2}>
-                        {pieData.map((d) => (
+                        {pieData.map((item) => (
                           <Box
-                            key={d.name}
+                            key={item.name}
                             display="flex"
                             alignItems="center"
                             justifyContent="space-between"
@@ -506,15 +495,17 @@ export default function SchoolDashboard() {
                           >
                             <Box display="flex" alignItems="center" gap={1}>
                               <Box
-                                sx={{ width: 10, height: 10, bgcolor: d.color }}
+                                sx={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: 1,
+                                  bgcolor: item.color,
+                                }}
                               />
-                              <Typography variant="body2">{d.name}</Typography>
+                              <Typography variant="body2">{item.name}</Typography>
                             </Box>
-                            <Typography
-                              variant="body2"
-                              sx={{ fontWeight: 700 }}
-                            >
-                              {d.value}%
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                              {item.value}%
                             </Typography>
                           </Box>
                         ))}

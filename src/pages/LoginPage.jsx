@@ -1,8 +1,16 @@
 import React, { useState } from "react";
-import { TextField, Button, Paper, Typography, Box, CircularProgress } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Paper,
+  Typography,
+  Box,
+  CircularProgress,
+  Chip,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import "./login.css";
-import leftImage from "../assets/loginImage.png"; // your left-side image
+import leftImage from "../assets/loginImage.png";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -10,31 +18,29 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    
+
     try {
       const response = await fetch("https://wellness.alwaysdata.net/login.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-    
 
       const data = await response.json();
       setLoading(false);
 
       if (data.success) {
-        // Store token and user in localStorage
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
-           // ✅ Store school_id if user is a school_leader
-           if (data.user.school_id) {
-            localStorage.setItem("school_id", data.user.school_id);
-          }
-        // Navigate based on role
+        if (data.user.school_id) {
+          localStorage.setItem("school_id", data.user.school_id);
+        }
+
         if (data.user.role === "admin") {
           navigate("/admin-dashboard");
         } else if (data.user.role === "school_leader") {
@@ -54,15 +60,24 @@ const LoginPage = () => {
 
   return (
     <Box className="login-container">
-      {/* Left Side Image */}
       <Box className="left-section">
-        <img src={leftImage} alt="Illustration" className="left-image" />
+        <img src={leftImage} alt="Wellness dashboard illustration" className="left-image" />
       </Box>
 
-      {/* Right Side Login Form */}
-      <Paper elevation={3} className="right-section">
-        <Typography variant="h5" color="primary" gutterBottom>
-          Welcome Back!
+      <Paper elevation={0} className="right-section">
+        <Chip
+          label="Wellness Tracker"
+          sx={{
+            mb: 2,
+            backgroundColor: "rgba(15,118,110,0.08)",
+            color: "#0F766E",
+          }}
+        />
+        <Typography variant="h3" sx={{ mb: 1 }}>
+          Welcome back
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          Sign in to review wellness insights, activities, and recommendations.
         </Typography>
 
         <Box component="form" className="login-form" onSubmit={handleLogin}>
@@ -93,9 +108,8 @@ const LoginPage = () => {
           <Button
             type="submit"
             variant="contained"
-            color="primary"
             fullWidth
-            sx={{ borderRadius: 5, marginTop: 2 }}
+            sx={{ mt: 3, minHeight: 54 }}
             disabled={loading}
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : "Login"}

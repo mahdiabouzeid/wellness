@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Grid,
   Box,
@@ -14,6 +14,8 @@ import {
   Toolbar,
   TextField,
   CircularProgress,
+  Chip,
+  Button,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import Sidebar from "../components/layout/Sidebar";
@@ -30,75 +32,71 @@ const AdminDashboard = () => {
     avgCompletion: 78,
     pendingReports: 3,
   });
-
   const [schools, setSchools] = useState([]);
   const [selectedSchool, setSelectedSchool] = useState("");
   const [month, setMonth] = useState("");
   const [loadingSchools, setLoadingSchools] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const [notifications, setNotifications] = useState([]);
   const [activeNotification, setActiveNotification] = useState(null);
   const [recommendation, setRecommendation] = useState("");
   const [saving, setSaving] = useState(false);
-  
-  const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+  const seenNotificationIds = useRef(new Set());
 
-  // === Fetch schools from backend ===
+  const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
+
   useEffect(() => {
     const fetchSchools = async () => {
       try {
         const res = await fetch("https://wellness.alwaysdata.net/get_schools.php");
         const data = await res.json();
         setSchools(data);
-        if (data.length > 0) setSelectedSchool(data[0].id);
+        if (data.length > 0) {
+          setSelectedSchool(data[0].id);
+        }
       } catch (err) {
         console.error("Error fetching schools:", err);
       } finally {
         setLoadingSchools(false);
       }
     };
+
     fetchSchools();
   }, []);
 
-  // === Fetch notifications from backend ===
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
         const res = await fetch("https://wellness.alwaysdata.net/get_notifications.php");
         const data = await res.json();
 
-        // Find unread + not yet shown notifications
-        const newOnes = data.filter(
-          (n) => !notifications.find((old) => old.id === n.id) && !n.isread
+        const fresh = data.filter(
+          (item) => !seenNotificationIds.current.has(item.id) && !item.isread
         );
 
-        if (newOnes.length > 0) {
-          const newest = newOnes[0];
+        if (fresh.length > 0) {
+          const newest = fresh[0];
           setActiveNotification(newest);
-          setNotifications([...notifications, ...newOnes]);
+          fresh.forEach((item) => seenNotificationIds.current.add(item.id));
 
-          // Mark notification as read in DB
           fetch("https://wellness.alwaysdata.net/mark_notification_read.php", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: `id=${newest.id}`,
-          });
+          }).catch((error) => console.error("Error marking notification:", error));
         }
       } catch (err) {
         console.error("Error fetching notifications:", err);
       }
     };
 
-    // Poll every 5 seconds
-    const interval = setInterval(fetchNotifications, 1000);
-    fetchNotifications(); // initial load
-
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5000);
     return () => clearInterval(interval);
-  }, [notifications]);
+  }, []);
+
   useEffect(() => {
     if (!selectedSchool || !month) return;
-  
+
     const fetchRecommendation = async () => {
       try {
         const res = await fetch(
@@ -107,17 +105,18 @@ const AdminDashboard = () => {
         const data = await res.json();
         setRecommendation(data.recommendation_text || "");
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching recommendation:", err);
       }
     };
-  
+
     fetchRecommendation();
   }, [selectedSchool, month]);
+
   const handleSaveRecommendation = async () => {
     if (!selectedSchool || !month) return;
-  
+
     setSaving(true);
-  
+
     try {
       await fetch("https://wellness.alwaysdata.net/save_recommendation.php", {
         method: "POST",
@@ -135,21 +134,30 @@ const AdminDashboard = () => {
       setSaving(false);
     }
   };
-    
+
+  const selectedSchoolName =
+    schools.find((school) => String(school.id) === String(selectedSchool))?.name || "Selected school";
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#F5F6FA" }}>
+    <Box
+      className="admin-dashboard"
+      sx={{
+        display: "flex",
+        minHeight: "100vh",
+        width: "100%",
+      }}
+    >
       {activeNotification && (
         <Notification
           message={`🏫 ${activeNotification.school_name}: ${activeNotification.message}`}
         />
       )}
 
-      {/* Sidebar for desktop */}
       <Box
         component="nav"
         sx={{
-          width: { md: 260 },
+          width: { md: 280 },
+          flexBasis: { md: 280 },
           flexShrink: { md: 0 },
           display: { xs: "none", md: "block" },
         }}
@@ -157,7 +165,6 @@ const AdminDashboard = () => {
         <Sidebar />
       </Box>
 
-      {/* Sidebar Drawer for mobile */}
       <Drawer
         variant="temporary"
         open={mobileOpen}
@@ -165,69 +172,107 @@ const AdminDashboard = () => {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: "block", md: "none" },
-          "& .MuiDrawer-paper": { width: 240, boxSizing: "border-box" },
+          "& .MuiDrawer-paper": {
+            width: 240,
+            boxSizing: "border-box",
+            border: 0,
+            background: "transparent",
+            boxShadow: "none",
+          },
         }}
       >
         <Sidebar />
       </Drawer>
 
-      {/* Top App Bar (Mobile only) */}
       <AppBar
         position="fixed"
         sx={{
           display: { xs: "flex", md: "none" },
-          bgcolor: "#4F46E5",
-          boxShadow: "none",
+          bgcolor: "rgba(15,61,57,0.92)",
+          boxShadow: "0 10px 30px rgba(16, 42, 39, 0.12)",
+          backdropFilter: "blur(14px)",
         }}
       >
         <Toolbar>
-          <IconButton
-            color="inherit"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2 }}
-          >
+          <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2 }}>
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
             Admin Dashboard
           </Typography>
         </Toolbar>
       </AppBar>
 
-      {/* === MAIN CONTENT === */}
       <Box
         component="main"
+        className="admin-dashboard__main page-shell"
         sx={{
-          flexGrow: 1,
-          p: { xs: 2, md: 4 },
+          flex: 1,
+          minWidth: 0,
           mt: { xs: 7, md: 0 },
-          width: "100%",
           display: "flex",
           flexDirection: "column",
           gap: 3,
         }}
       >
-        {/* === Header + Filters === */}
-        <Box sx={{ mb: 2 }}>
-          <Typography
-            variant="h5"
-            sx={{ fontWeight: 700, color: "#1E293B", mb: 2 }}
-          >
-            Admin Dashboard
-          </Typography>
+        <Box className="page-shell__hero">
+          <Box className="page-shell__hero-copy">
+            <Chip
+              label="Administration workspace"
+              sx={{
+                mb: 2,
+                color: "#0F3D39",
+                backgroundColor: "rgba(244,255,253,0.9)",
+              }}
+            />
+            <Typography variant="h3" sx={{ mb: 1.25 }}>
+              Monitor school wellness with a cleaner, full-width command center.
+            </Typography>
+            <Typography sx={{ maxWidth: 620, color: "rgba(245,255,253,0.82)" }}>
+              Track performance, review dimension balance, and issue monthly recommendations
+              without the layout gaps and cramped cards from the previous screen.
+            </Typography>
+            <Box
+              sx={{
+                mt: 3,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 1.25,
+              }}
+            >
+              <Chip
+                label={selectedSchoolName}
+                sx={{ backgroundColor: "rgba(255,255,255,0.14)", color: "#fff" }}
+              />
+              <Chip
+                label={month || "Choose a month"}
+                sx={{ backgroundColor: "rgba(255,255,255,0.14)", color: "#fff" }}
+              />
+            </Box>
+          </Box>
+        </Box>
 
-          <Grid container spacing={2}>
+        <Paper className="surface-card" sx={{ p: { xs: 2, md: 3 } }}>
+          <Grid container spacing={2.5} alignItems="center">
+            <Grid item xs={12} md={4}>
+              <Typography variant="h6" sx={{ mb: 0.75 }}>
+                Analytics Filters
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Narrow the dashboard to a school and month before reviewing the charts.
+              </Typography>
+            </Grid>
+
             <Grid item xs={12} sm={6} md={4}>
               <FormControl fullWidth>
                 <InputLabel>Select School</InputLabel>
                 {loadingSchools ? (
                   <Box
                     sx={{
+                      minHeight: 56,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      height: 56,
                     }}
                   >
                     <CircularProgress size={24} />
@@ -237,20 +282,10 @@ const AdminDashboard = () => {
                     value={selectedSchool}
                     label="Select School"
                     onChange={(e) => setSelectedSchool(e.target.value)}
-                    sx={{
-                      bgcolor: "#fff",
-                      borderRadius: 2,
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#6366F1",
-                      },
-                      "&:hover .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#4338CA",
-                      },
-                    }}
                   >
-                    {schools.map((s) => (
-                      <MenuItem key={s.id} value={s.id}>
-                        {s.name}
+                    {schools.map((school) => (
+                      <MenuItem key={school.id} value={school.id}>
+                        {school.name}
                       </MenuItem>
                     ))}
                   </Select>
@@ -266,138 +301,109 @@ const AdminDashboard = () => {
                 onChange={(e) => setMonth(e.target.value)}
                 fullWidth
                 InputLabelProps={{ shrink: true }}
-                sx={{
-                  bgcolor: "#fff",
-                  borderRadius: 2,
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#6366F1",
-                  },
-                }}
               />
             </Grid>
-          </Grid>
-        </Box>
 
-        {/* === Stats Row === */}
+            <Grid item xs={12} md={1}>
+              <Button
+                variant="contained"
+                color="secondary"
+                fullWidth
+                sx={{ minHeight: 56 }}
+                onClick={() => {
+                  setMonth("");
+                  setRecommendation("");
+                }}
+              >
+                Reset
+              </Button>
+            </Grid>
+          </Grid>
+        </Paper>
+
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Schools Registered"
-              value={stats.totalSchools}
-              color="#4F46E5"
-            />
+          <Grid item xs={12} sm={6} xl={3}>
+            <StatCard title="Schools Registered" value={stats.totalSchools} color="#0F766E" />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Activities Uploaded"
-              value={stats.totalActivities}
-              color="#22C55E"
-            />
+          <Grid item xs={12} sm={6} xl={3}>
+            <StatCard title="Activities Uploaded" value={stats.totalActivities} color="#EA580C" />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Avg Completion"
-              value={`${stats.avgCompletion}%`}
-              color="#F59E0B"
-            />
+          <Grid item xs={12} sm={6} xl={3}>
+            <StatCard title="Avg Completion" value={`${stats.avgCompletion}%`} color="#0284C7" />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Pending Reports"
-              value={stats.pendingReports}
-              color="#EF4444"
-            />
+          <Grid item xs={12} sm={6} xl={3}>
+            <StatCard title="Pending Reports" value={stats.pendingReports} color="#B45309" />
           </Grid>
         </Grid>
 
-        {/* === Charts === */}
         {selectedSchool && month ? (
-          <Grid container spacing={4}>
-            <Grid item xs={12} md={8}>
-              <Paper
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  boxShadow: "0px 4px 12px rgba(0,0,0,0.05)",
-                  backgroundColor: "#fff",
-                  transition: "transform 0.2s",
-                  "&:hover": { transform: "scale(1.01)" },
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  sx={{ mb: 2, fontWeight: 600, color: "#1E293B" }}
-                >
-                  Wellness Completion by Dimension
+          <Grid container spacing={3} className="admin-dashboard__charts">
+            <Grid item xs={12} xl={7}>
+              <Paper className="admin-dashboard__panel" sx={{ p: { xs: 2, md: 3 } }}>
+                <Typography variant="subtitle2" sx={{ color: "text.secondary", mb: 1 }}>
+                  Performance Overview
+                </Typography>
+                <Typography variant="h5" sx={{ mb: 3 }}>
+                  Wellness completion by dimension
                 </Typography>
                 <WellnessBarChart schoolId={selectedSchool} month={month} />
               </Paper>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} xl={5}>
               <Paper
+                className="admin-dashboard__panel"
                 sx={{
-                  width: "110%",
-                  ml: "-5%",
-                  p: 3,
-                  borderRadius: 3,
-                  boxShadow: "0px 4px 12px rgba(0,0,0,0.05)",
-                  backgroundColor: "#fff",
-                  transition: "transform 0.2s",
-                  "&:hover": { transform: "scale(1.01)" },
+                  p: { xs: 2, md: 3 },
                   display: "flex",
                   flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minHeight: 400,
                 }}
               >
-                <Typography
-                  variant="h6"
-                  sx={{ mb: 2, fontWeight: 600, color: "#1E293B" }}
-                >
-                  Wellness Balance
+                <Typography variant="subtitle2" sx={{ color: "text.secondary", mb: 1 }}>
+                  Balance Snapshot
+                </Typography>
+                <Typography variant="h5" sx={{ mb: 3 }}>
+                  Dimension balance
                 </Typography>
                 <Box
+                  className="admin-dashboard__chart admin-dashboard__chart--circular"
                   sx={{
                     width: "100%",
-                    height: 380,
                     display: "flex",
-                    justifyContent: "center",
                     alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  <WellnessCircularChart
-                    schoolId={selectedSchool}
-                    month={month}
-                  />
+                  <WellnessCircularChart schoolId={selectedSchool} month={month} />
                 </Box>
               </Paper>
             </Grid>
           </Grid>
         ) : (
-          <Typography
-            align="center"
-            sx={{ mt: 4, color: "text.secondary", fontWeight: 500 }}
+          <Paper
+            className="surface-card"
+            sx={{
+              p: 4,
+              textAlign: "center",
+            }}
           >
-            Please select a school and a month to view analytics.
-          </Typography>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Select a school and month to unlock analytics
+            </Typography>
+            <Typography color="text.secondary">
+              The charts will expand here once a school and reporting period are selected.
+            </Typography>
+          </Paper>
         )}
 
-        {/* === Recommendations === */}
-        <Grid container spacing={3} sx={{ mt: 1 }}>
-          <Grid item xs={12}>
-          <RecommendationCard
-  selectedSchool={selectedSchool}
-  month={month}
-  recommendation={recommendation}
-  setRecommendation={setRecommendation}
-  handleSaveRecommendation={handleSaveRecommendation}
-  saving={saving}
-/>
-
-          </Grid>
-        </Grid>
+        <RecommendationCard
+          selectedSchool={selectedSchool}
+          month={month}
+          recommendation={recommendation}
+          setRecommendation={setRecommendation}
+          handleSaveRecommendation={handleSaveRecommendation}
+          saving={saving}
+        />
       </Box>
     </Box>
   );

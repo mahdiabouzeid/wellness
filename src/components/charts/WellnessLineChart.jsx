@@ -8,30 +8,23 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  CircularProgress,
-  Button,
-} from "@mui/material";
+import { Box, Typography, CircularProgress, Button } from "@mui/material";
 
-// ✅ Custom Tooltip with color-coded values
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
 
   return (
     <Box
       sx={{
-        backgroundColor: "white",
+        backgroundColor: "rgba(255,255,255,0.96)",
         p: 1.5,
-        borderRadius: 1,
-        boxShadow: 2,
-        minWidth: 100,
+        borderRadius: 2,
+        boxShadow: "0 18px 40px rgba(16, 42, 39, 0.12)",
+        border: "1px solid rgba(16, 42, 39, 0.08)",
+        minWidth: 140,
       }}
     >
-      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+      <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
         {label}
       </Typography>
       {payload.map((entry) => (
@@ -40,7 +33,7 @@ const CustomTooltip = ({ active, payload, label }) => {
           variant="body2"
           sx={{
             color: entry.color,
-            fontWeight: 500,
+            fontWeight: 600,
             textTransform: "capitalize",
           }}
         >
@@ -53,16 +46,14 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 const WellnessLineChart = ({ schoolId, onDataReady }) => {
   const [monthStats, setMonthStats] = useState([]);
-  const [DIMENSIONS, setDIMENSIONS] = useState([]);
+  const [dimensions, setDimensions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentWindowEnd, setCurrentWindowEnd] = useState(new Date());
 
-  // ---------------- Fetch data ----------------
   const fetchData = async (startDate, endDate) => {
     try {
       setLoading(true);
 
-      // Generate months YYYY-MM
       const months = [];
       const temp = new Date(startDate);
       while (temp <= endDate) {
@@ -70,43 +61,36 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
         temp.setMonth(temp.getMonth() + 1);
       }
 
-      // Fetch each month
       const responses = await Promise.all(
         months.map((month) =>
-          fetch(
-            `/get_wellness_percentage.php?school_id=${schoolId}&month=${month}`
-          )
+          fetch(`https://wellness.alwaysdata.net/get_wellness_percentage.php?school_id=${schoolId}&month=${month}`)
             .then((res) => res.json())
             .then((res) => ({ month, data: res }))
         )
       );
 
-      // Collect all dimensions
-      const allDims = {};
+      const allDimensions = {};
       responses.forEach(({ data }) => {
         if (Array.isArray(data)) {
-          data.forEach((d) => {
-            allDims[d.dimension_name] = d.color;
+          data.forEach((item) => {
+            allDimensions[item.dimension_name] = item.color;
           });
         }
       });
 
-      // Format chart rows
       const formattedData = responses.map(({ month, data }) => {
         const label = new Date(month + "-01").toLocaleString("default", {
           month: "short",
         });
-
         const entry = { month: label };
 
-        Object.keys(allDims).forEach((dim) => {
-          entry[dim] = 0;
+        Object.keys(allDimensions).forEach((dimension) => {
+          entry[dimension] = 0;
         });
 
         if (Array.isArray(data)) {
-          data.forEach((d) => {
-            entry[d.dimension_name] =
-              parseFloat(d.wellness_percentage) || 0;
+          data.forEach((item) => {
+            entry[item.dimension_name] = parseFloat(item.wellness_percentage) || 0;
           });
         }
 
@@ -114,18 +98,19 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
       });
 
       setMonthStats(formattedData);
-      setDIMENSIONS(
-        Object.entries(allDims).map(([key, color]) => ({ key, color }))
+      setDimensions(
+        Object.entries(allDimensions).map(([key, color]) => ({ key, color }))
       );
 
-      // 🔑 IMPORTANT: send EXACT displayed data for Excel export
       if (onDataReady) {
         const exportSafeData = formattedData.map((row) => {
-          const out = { Month: row.month };
-          Object.keys(row).forEach((k) => {
-            if (k !== "month") out[k] = row[k];
+          const output = { Month: row.month };
+          Object.keys(row).forEach((key) => {
+            if (key !== "month") {
+              output[key] = row[key];
+            }
           });
-          return out;
+          return output;
         });
 
         onDataReady(exportSafeData);
@@ -137,7 +122,6 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
     }
   };
 
-  // ---------------- Initial fetch (latest 6 months) ----------------
   useEffect(() => {
     if (!schoolId) return;
 
@@ -149,7 +133,6 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
     fetchData(start, end);
   }, [schoolId]);
 
-  // ---------------- Prev / Next ----------------
   const handlePrev = () => {
     const newEnd = new Date(currentWindowEnd);
     newEnd.setMonth(newEnd.getMonth() - 6);
@@ -181,10 +164,9 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
     fetchData(newStart, newEnd);
   };
 
-  // ---------------- UI states ----------------
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" height={350}>
+      <Box display="flex" justifyContent="center" alignItems="center" height={360}>
         <CircularProgress />
       </Box>
     );
@@ -200,65 +182,67 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
     );
   }
 
-  const windowRange = `${monthStats[0]?.month} → ${
-    monthStats[monthStats.length - 1]?.month
-  }`;
+  const windowRange = `${monthStats[0]?.month} to ${monthStats[monthStats.length - 1]?.month}`;
 
   return (
-    <Card sx={{ mt: 3, borderRadius: 3, boxShadow: 3, p: 2 }}>
-      <CardContent>
-        {/* Header */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 2,
-          }}
-        >
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Progress by Dimension ({windowRange})
+    <Box>
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 2,
+          mb: 2.5,
+        }}
+      >
+        <Box>
+          <Typography variant="subtitle2" sx={{ color: "text.secondary", mb: 1 }}>
+            Progress by Dimension
           </Typography>
-
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <Button variant="outlined" onClick={handlePrev}>
-              Prev 6 months
-            </Button>
-            <Button variant="outlined" onClick={handleNext}>
-              Next 6 months
-            </Button>
-          </Box>
+          <Typography variant="h6">{windowRange}</Typography>
         </Box>
 
-        {/* Chart */}
-        <Box sx={{ width: "100%", height: 350 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={monthStats}
-              margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-              <ReTooltip content={<CustomTooltip />} />
-
-              {DIMENSIONS.map((d) => (
-                <Line
-                  key={d.key}
-                  type="monotone"
-                  dataKey={d.key}
-                  stroke={d.color}
-                  strokeWidth={2.5}
-                  dot={{ r: 3, fill: d.color }}
-                  activeDot={{ r: 5 }}
-                  connectNulls
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button variant="outlined" onClick={handlePrev}>
+            Prev 6 months
+          </Button>
+          <Button variant="outlined" onClick={handleNext}>
+            Next 6 months
+          </Button>
         </Box>
-      </CardContent>
-    </Card>
+      </Box>
+
+      <Box sx={{ width: "100%", height: 380 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={monthStats} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+            <CartesianGrid stroke="rgba(16,42,39,0.08)" strokeDasharray="4 4" />
+            <XAxis dataKey="month" tick={{ fill: "#55706C" }} axisLine={false} tickLine={false} />
+            <YAxis
+              domain={[0, 100]}
+              tickFormatter={(value) => `${value}%`}
+              tick={{ fill: "#55706C" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <ReTooltip content={<CustomTooltip />} />
+
+            {dimensions.map((dimension) => (
+              <Line
+                key={dimension.key}
+                type="monotone"
+                dataKey={dimension.key}
+                stroke={dimension.color}
+                strokeWidth={3}
+                dot={{ r: 3, fill: dimension.color }}
+                activeDot={{ r: 5 }}
+                connectNulls
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </Box>
+    </Box>
   );
 };
 

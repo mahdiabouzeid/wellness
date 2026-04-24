@@ -20,19 +20,19 @@ const WellnessCircularChart = ({ schoolId, month }) => {
       try {
         setLoading(true);
 
-        const formattedMonth = month.slice(0, 7); // YYYY-MM format
-        const url = `/get_wellness_percentage.php?school_id=${schoolId}&month=${formattedMonth}`;
+        const formattedMonth = month.slice(0, 7);
+        const url = `https://wellness.alwaysdata.net/get_wellness_percentage.php?school_id=${schoolId}&month=${formattedMonth}`;
         console.log("Fetching:", url);
 
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
 
         const result = await response.json();
         console.log("API result:", result);
 
-        const dataArray = Array.isArray(result)
-          ? result
-          : result?.data || [];
+        const dataArray = Array.isArray(result) ? result : result?.data || [];
 
         if (Array.isArray(dataArray) && dataArray.length > 0) {
           const formattedData = dataArray.map((item) => ({
@@ -57,7 +57,7 @@ const WellnessCircularChart = ({ schoolId, month }) => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" height={350}>
+      <Box display="flex" justifyContent="center" alignItems="center" height="100%">
         <CircularProgress />
       </Box>
     );
@@ -74,13 +74,13 @@ const WellnessCircularChart = ({ schoolId, month }) => {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={350}>
+    <ResponsiveContainer width="100%" height="100%">
       <PieChart>
         <Pie
           data={data}
           dataKey="value"
           nameKey="name"
-          outerRadius={45}   // ✅ same as your original static chart
+          outerRadius="72%"
           label
         >
           {data.map((entry, index) => (
@@ -88,7 +88,7 @@ const WellnessCircularChart = ({ schoolId, month }) => {
           ))}
         </Pie>
         <Tooltip formatter={(value) => `${value}%`} />
-        <Legend />
+        <Legend verticalAlign="bottom" />
       </PieChart>
     </ResponsiveContainer>
   );

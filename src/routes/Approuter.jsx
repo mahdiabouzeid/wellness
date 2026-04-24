@@ -12,7 +12,6 @@ import Recommendations from "../pages/Recommendations";
 import Notifications from "../pages/Notifications";
 import ProfileSettings from "../pages/ProfileSettings";
 import SchoolActivitiesPage from "../pages/SchoolActivitiesPage";
-import ActivityUploading from "../pages/ActivityUpload";
 import DimensionsManager from "../pages/DimensionManager";
 import SchoolActivity from "../pages/SchoolActivity";
 import UploadEvidence from "../pages/UploadEvidence";
