@@ -27,7 +27,7 @@ const CreateSchool = () => {
     setResult(null);
 
     try {
-      const res = await fetch("/create_school.php", {
+      const res = await fetch("https://wellness.alwaysdata.net/create_school.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

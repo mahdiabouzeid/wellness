@@ -16,11 +16,12 @@ const LoginPage = () => {
     setLoading(true);
     
     try {
-      const response = await fetch("/login.php", {
+      const response = await fetch("https://wellness.alwaysdata.net/login.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+    
 
       const data = await response.json();
       setLoading(false);

@@ -17,7 +17,7 @@ export default function SchoolActivitiesPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/get_schools.php")
+    fetch("https://wellness.alwaysdata.net/get_schools.php")
       .then((res) => res.json())
       .then((data) => setSchools(data))
       .catch((err) => console.error("Error fetching schools:", err));
@@ -35,7 +35,7 @@ export default function SchoolActivitiesPage() {
   };
 
   const confirmActivity = (id) => {
-    fetch("/confirm_activity.php", {
+    fetch("https://wellness.alwaysdata.net/confirm_activity.php", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

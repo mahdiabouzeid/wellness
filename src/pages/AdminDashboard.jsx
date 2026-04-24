@@ -48,7 +48,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const res = await fetch("/get_schools.php");
+        const res = await fetch("https://wellness.alwaysdata.net/get_schools.php");
         const data = await res.json();
         setSchools(data);
         if (data.length > 0) setSelectedSchool(data[0].id);
@@ -65,7 +65,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const res = await fetch("/get_notifications.php");
+        const res = await fetch("https://wellness.alwaysdata.net/get_notifications.php");
         const data = await res.json();
 
         // Find unread + not yet shown notifications
@@ -79,7 +79,7 @@ const AdminDashboard = () => {
           setNotifications([...notifications, ...newOnes]);
 
           // Mark notification as read in DB
-          fetch("/mark_notification_read.php", {
+          fetch("https://wellness.alwaysdata.net/mark_notification_read.php", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: `id=${newest.id}`,
@@ -119,7 +119,7 @@ const AdminDashboard = () => {
     setSaving(true);
   
     try {
-      await fetch("/save_recommendation.php", {
+      await fetch("https://wellness.alwaysdata.net/save_recommendation.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",

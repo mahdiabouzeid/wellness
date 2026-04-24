@@ -26,7 +26,7 @@ const Reports = () => {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const res = await fetch("/get_schools.php");
+        const res = await fetch("https://wellness.alwaysdata.net/get_schools.php");
         const data = await res.json();
         setSchools(data);
         if (data.length > 0) setSelectedSchool(data[0].id);

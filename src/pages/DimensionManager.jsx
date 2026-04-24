@@ -19,7 +19,7 @@ export default function DimensionsManager() {
 
   // Fetch all dimensions
   useEffect(() => {
-    fetch("/get_dimensions.php")
+    fetch("https://wellness.alwaysdata.net/get_dimensions.php")
       .then((res) => res.json())
       .then((data) => {
         setDimensions(data);

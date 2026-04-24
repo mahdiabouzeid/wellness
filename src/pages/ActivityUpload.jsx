@@ -32,12 +32,12 @@ export default function ActivityUpload() {
 
   // ✅ Fetch dropdown data
   useEffect(() => {
-    fetch("/get_dimensions.php")
+    fetch("https://wellness.alwaysdata.net/get_dimensions.php")
       .then((res) => res.json())
       .then(setDimensions)
       .catch(console.error);
 
-    fetch("/get_schools.php")
+    fetch("https://wellness.alwaysdata.net/get_schools.php")
       .then((res) => res.json())
       .then(setSchools)
       .catch(console.error);
