@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Box,
   Grid,
@@ -6,17 +6,18 @@ import {
   CardContent,
   Typography,
   Avatar,
-  IconButton,
   Button,
   Chip,
   Divider,
   Tooltip,
   CircularProgress,
+  TextField,
+  LinearProgress,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PieChartIcon from "@mui/icons-material/PieChart";
-import AssessmentIcon from "@mui/icons-material/Assessment";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import {
   ResponsiveContainer,
   PieChart,
@@ -31,6 +32,8 @@ import {
 } from "recharts";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE_URL = "https://wellness.alwaysdata.net";
+
 const DIMENSIONS = [
   { key: "emotional", label: "Emotional", color: "#F97316" },
   { key: "physical", label: "Physical", color: "#FB7185" },
@@ -41,6 +44,21 @@ const DIMENSIONS = [
   { key: "environmental", label: "Environmental", color: "#14B8A6" },
   { key: "vocational", label: "Vocational", color: "#0F766E" },
 ];
+
+function getCurrentMonthValue() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatMonthLabel(monthValue) {
+  if (!monthValue) return "No month selected";
+
+  const [year, month] = monthValue.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleString("default", {
+    month: "short",
+    year: "numeric",
+  });
+}
 
 function exportToCSV(filename, rows) {
   if (!rows || !rows.length) return;
@@ -95,10 +113,12 @@ function StatCard({ title, value, subtitle, icon }) {
 
 export default function SchoolDashboard() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const hasLoadedRef = useRef(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [monthStats, setMonthStats] = useState([]);
-  const [selectedMonthIndex, setSelectedMonthIndex] = useState(0);
   const [topActivities, setTopActivities] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthValue);
 
   const schoolId = localStorage.getItem("school_id");
 
@@ -110,14 +130,19 @@ export default function SchoolDashboard() {
     }
 
     const fetchData = async () => {
-      setLoading(true);
+      if (hasLoadedRef.current) {
+        setRefreshing(true);
+      } else {
+        setInitialLoading(true);
+      }
 
       try {
         const months = [];
-        const today = new Date();
+        const [selectedYear, selectedMonthNumber] = selectedMonth.split("-").map(Number);
+        const selectedDate = new Date(selectedYear, selectedMonthNumber - 1, 1);
 
         for (let i = 4; i >= 0; i -= 1) {
-          const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - i, 1);
           const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
           months.push({
             monthStr,
@@ -126,9 +151,9 @@ export default function SchoolDashboard() {
         }
 
         const wellnessPromises = months.map(({ monthStr }) =>
-          fetch(`/get_wellness_percentage.php?school_id=${schoolId}&month=${monthStr}`).then((res) =>
-            res.json()
-          )
+          fetch(
+            `${API_BASE_URL}/get_wellness_percentage.php?school_id=${schoolId}&month=${monthStr}`
+          ).then((res) => res.json())
         );
 
         const results = await Promise.all(wellnessPromises);
@@ -140,7 +165,9 @@ export default function SchoolDashboard() {
             monthData[dimension.key] = 0;
           });
 
-          data.forEach((dimension) => {
+          const dimensions = Array.isArray(data) ? data : [];
+
+          dimensions.forEach((dimension) => {
             const match = DIMENSIONS.find((item) => item.label === dimension.dimension_name);
             if (match) {
               monthData[match.key] = Math.round(dimension.wellness_percentage || 0);
@@ -151,33 +178,42 @@ export default function SchoolDashboard() {
         });
 
         setMonthStats(transformedData);
-        setSelectedMonthIndex(transformedData.length - 1);
 
-        const activitiesRes = await fetch(`/get_school_activities.php?school_id=${schoolId}`);
+        const activitiesRes = await fetch(
+          `${API_BASE_URL}/get_school_activities.php?school_id=${schoolId}&month=${selectedMonth}`
+        );
         const activitiesData = await activitiesRes.json();
 
-        const pending = activitiesData.filter((activity) => !activity.completed).slice(-3).reverse();
+        const pending = (Array.isArray(activitiesData) ? activitiesData : [])
+          .filter((activity) => !activity.completed)
+          .slice(-3)
+          .reverse();
         setTopActivities(pending);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
-        setLoading(false);
+        hasLoadedRef.current = true;
+        setInitialLoading(false);
+        setRefreshing(false);
       }
     };
 
     fetchData();
-  }, [schoolId, navigate]);
+  }, [schoolId, navigate, selectedMonth]);
+
+  const latestMonth = monthStats[monthStats.length - 1];
+  const selectedMonthLabel = formatMonthLabel(selectedMonth);
 
   const pieData = useMemo(
     () =>
       monthStats.length > 0
         ? DIMENSIONS.map((dimension) => ({
             name: dimension.label,
-            value: monthStats[selectedMonthIndex]?.[dimension.key] || 0,
+            value: latestMonth?.[dimension.key] || 0,
             color: dimension.color,
           }))
         : [],
-    [monthStats, selectedMonthIndex]
+    [monthStats, latestMonth]
   );
 
   const overallCompletion = useMemo(() => {
@@ -196,7 +232,7 @@ export default function SchoolDashboard() {
     ...DIMENSIONS.reduce((acc, dimension) => ({ ...acc, [dimension.label]: month[dimension.key] }), {}),
   }));
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
@@ -205,7 +241,7 @@ export default function SchoolDashboard() {
   }
 
   return (
-    <Box className="page-shell">
+    <Box className="school-dashboard page-shell">
       <Box className="page-shell__hero">
         <Box className="page-shell__hero-copy">
           <Chip
@@ -213,16 +249,17 @@ export default function SchoolDashboard() {
             sx={{ mb: 2, color: "#0F3D39", backgroundColor: "rgba(244,255,253,0.9)" }}
           />
           <Typography variant="h3" sx={{ mb: 1 }}>
-            Your wellness snapshot, refined into a cleaner dashboard.
+            School wellness snapshot
           </Typography>
           <Typography sx={{ color: "rgba(245,255,253,0.82)", maxWidth: 640 }}>
-            Review monthly movement across eight dimensions, export what you need, and focus
-            next actions on your weakest area.
+            Review the latest monthly results, compare recent movement across all eight
+            wellness dimensions, and prioritize the next activities from one clean view.
           </Typography>
         </Box>
       </Box>
 
       <Box
+        className="school-dashboard__header"
         sx={{
           display: "flex",
           flexWrap: "wrap",
@@ -238,11 +275,24 @@ export default function SchoolDashboard() {
             School Wellness Dashboard
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Overview of monthly wellness across all eight tracked dimensions.
+            Showing results for {selectedMonthLabel}
           </Typography>
         </Box>
 
-        <Box display="flex" gap={1} flexWrap="wrap">
+        <Box display="flex" gap={1} flexWrap="wrap" alignItems="center">
+          <TextField
+            label="Reporting Month"
+            type="month"
+            size="small"
+            value={selectedMonth}
+            onChange={(event) => {
+              if (event.target.value) {
+                setSelectedMonth(event.target.value);
+              }
+            }}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 190, backgroundColor: "#fff" }}
+          />
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}
@@ -250,11 +300,19 @@ export default function SchoolDashboard() {
           >
             Export CSV
           </Button>
-          <Button variant="contained" color="secondary" startIcon={<AssessmentIcon />}>
-            Generate PDF
-          </Button>
         </Box>
       </Box>
+
+      {refreshing && (
+        <LinearProgress
+          sx={{
+            mt: -2,
+            mb: 3,
+            borderRadius: 999,
+            backgroundColor: "rgba(15, 118, 110, 0.1)",
+          }}
+        />
+      )}
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
@@ -262,8 +320,8 @@ export default function SchoolDashboard() {
             <Grid item xs={12}>
               <StatCard
                 title="Overall Wellness"
-                value={`${overallCompletion}%`}
-                subtitle={monthStats.length > 0 ? `As of ${monthStats[selectedMonthIndex]?.month}` : ""}
+                value={refreshing ? "..." : `${overallCompletion}%`}
+                subtitle={`For ${selectedMonthLabel}`}
                 icon={<PieChartIcon />}
               />
             </Grid>
@@ -277,7 +335,7 @@ export default function SchoolDashboard() {
                         Weakest Dimension
                       </Typography>
                       <Typography variant="h5" sx={{ fontWeight: 800, mt: 1 }}>
-                        {weakest.name}
+                        {refreshing ? "Loading..." : weakest.name}
                       </Typography>
                     </Box>
                     <Tooltip title={`Current: ${weakest.value}%`}>
@@ -286,23 +344,29 @@ export default function SchoolDashboard() {
                   </Box>
 
                   <Box height={260}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <ReTooltip />
-                        <Pie
-                          data={pieData}
-                          dataKey="value"
-                          nameKey="name"
-                          innerRadius={58}
-                          outerRadius={92}
-                          paddingAngle={2}
-                        >
-                          {pieData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
+                    {refreshing ? (
+                      <Box height="100%" display="flex" alignItems="center" justifyContent="center">
+                        <CircularProgress size={28} />
+                      </Box>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <ReTooltip />
+                          <Pie
+                            data={pieData}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={58}
+                            outerRadius={92}
+                            paddingAngle={2}
+                          >
+                            {pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
                   </Box>
 
                   <Divider sx={{ my: 2 }} />
@@ -364,55 +428,41 @@ export default function SchoolDashboard() {
                   <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
                     <Box>
                       <Typography variant="subtitle2" color="text.secondary">
-                        Monthly Trend
+                        Five-month trend
                       </Typography>
                       <Typography variant="h5" sx={{ fontWeight: 800, mt: 1 }}>
-                        Progress by dimension
+                        Progress by wellness dimension
                       </Typography>
                     </Box>
-                    <Box>
-                      <Button
-                        size="small"
-                        onClick={() => setSelectedMonthIndex((index) => Math.max(0, index - 1))}
-                        sx={{ mr: 1 }}
-                        disabled={selectedMonthIndex === 0}
-                      >
-                        Prev
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() =>
-                          setSelectedMonthIndex((index) =>
-                            Math.min(monthStats.length - 1, index + 1)
-                          )
-                        }
-                        disabled={selectedMonthIndex === monthStats.length - 1}
-                      >
-                        Next
-                      </Button>
-                    </Box>
+                    <Chip label="Read-only trend" size="small" variant="outlined" />
                   </Box>
 
                   <Box height={320} mt={2}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthStats} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                        <CartesianGrid stroke="rgba(16,42,39,0.08)" strokeDasharray="4 4" />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                        <YAxis axisLine={false} tickLine={false} />
-                        <ReTooltip />
-                        {DIMENSIONS.map((dimension) => (
-                          <Line
-                            key={dimension.key}
-                            type="monotone"
-                            dataKey={dimension.key}
-                            stroke={dimension.color}
-                            strokeWidth={2.4}
-                            dot={false}
-                            name={dimension.label}
-                          />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
+                    {refreshing ? (
+                      <Box height="100%" display="flex" alignItems="center" justifyContent="center">
+                        <CircularProgress size={28} />
+                      </Box>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={monthStats} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                          <CartesianGrid stroke="rgba(16,42,39,0.08)" strokeDasharray="4 4" />
+                          <XAxis dataKey="month" axisLine={false} tickLine={false} />
+                          <YAxis axisLine={false} tickLine={false} domain={[0, 100]} />
+                          <ReTooltip />
+                          {DIMENSIONS.map((dimension) => (
+                            <Line
+                              key={dimension.key}
+                              type="monotone"
+                              dataKey={dimension.key}
+                              stroke={dimension.color}
+                              strokeWidth={2.4}
+                              dot={false}
+                              name={dimension.label}
+                            />
+                          ))}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
                   </Box>
                 </CardContent>
               </Card>
@@ -431,18 +481,39 @@ export default function SchoolDashboard() {
                         boxShadow: "0 24px 50px rgba(16, 42, 39, 0.12)",
                       },
                     }}
-                    onClick={() => navigate("/school-activity")}
+                    onClick={() => navigate("/school-activity", { state: { month: selectedMonth } })}
                   >
                     <CardContent sx={{ p: 3 }}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Top Activities
-                      </Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 800, mt: 1, mb: 2 }}>
-                        Pending activities
-                      </Typography>
+                      <Box
+                        display="flex"
+                        alignItems="flex-start"
+                        justifyContent="space-between"
+                        gap={2}
+                        mb={2}
+                      >
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Activities
+                          </Typography>
+                          <Typography variant="h5" sx={{ fontWeight: 800, mt: 1 }}>
+                            Pending for {selectedMonthLabel}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          icon={<ArrowForwardIcon />}
+                          label="Open"
+                          color="primary"
+                          variant="outlined"
+                          sx={{ cursor: "pointer" }}
+                        />
+                      </Box>
 
                       <Box display="flex" flexDirection="column" gap={1.25}>
-                        {topActivities.length > 0 ? (
+                        {refreshing ? (
+                          <Box py={2}>
+                            <CircularProgress size={24} />
+                          </Box>
+                        ) : topActivities.length > 0 ? (
                           topActivities.map((activity) => (
                             <Box
                               key={activity.school_activity_id}
@@ -459,10 +530,20 @@ export default function SchoolDashboard() {
                           ))
                         ) : (
                           <Typography variant="body2" color="text.secondary">
-                            No pending activities
+                            No pending activities for this month
                           </Typography>
                         )}
                       </Box>
+                      <Button
+                        endIcon={<ArrowForwardIcon />}
+                        sx={{ mt: 2, px: 0 }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate("/school-activity", { state: { month: selectedMonth } });
+                        }}
+                      >
+                        View all school activities
+                      </Button>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -479,9 +560,6 @@ export default function SchoolDashboard() {
                             By dimension
                           </Typography>
                         </Box>
-                        <IconButton>
-                          <DownloadIcon />
-                        </IconButton>
                       </Box>
 
                       <Box mt={2}>
