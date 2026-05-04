@@ -35,7 +35,7 @@ export default function AdminDisplayActivities() {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const res = await axios.get("/get_schools.php");
+        const res = await axios.get("https://wellness.alwaysdata.net/get_schools.php");
         setSchools(res.data);
       } catch (err) {
         console.error("Error fetching schools:", err);
@@ -49,7 +49,7 @@ export default function AdminDisplayActivities() {
     if (!selectedSchool || !selectedMonth) return;
     setLoading(true);
     try {
-      const res = await axios.get("/display-activities.php", {
+      const res = await axios.get("https://wellness.alwaysdata.net/display-activities.php", {
         params: { school_id: selectedSchool, month: selectedMonth },
       });
       if (res.data.success) {
@@ -72,7 +72,7 @@ export default function AdminDisplayActivities() {
       formData.append("confirmed", currentStatus ? 0 : 1);
 
       const res = await axios.post(
-        "/confirm_activity.php",
+        "https://wellness.alwaysdata.net/confirm_activity.php",
         formData
       );
 
@@ -213,7 +213,7 @@ export default function AdminDisplayActivities() {
               {a.activity.file_url && (
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   <a
-                    href={`http://localhost/wellness-backend/uploads/${a.activity.file_url}`}
+                    href={`https://wellness.alwaysdata.net/uploads/${a.activity.file_url}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -225,7 +225,7 @@ export default function AdminDisplayActivities() {
               {a.evidence_url && (
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   <a
-                    href={`http://localhost/wellness-backend/${a.evidence_url}`}
+                    href={`https://wellness.alwaysdata.net/${a.evidence_url}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
