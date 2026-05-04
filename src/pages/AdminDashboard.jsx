@@ -100,7 +100,7 @@ const AdminDashboard = () => {
     const fetchRecommendation = async () => {
       try {
         const res = await fetch(
-          `/get_recommendation.php?school_id=${selectedSchool}&month=${month}`
+          `https://wellness.alwaysdata.net/get_recommendation.php?school_id=${selectedSchool}&month=${month}`
         );
         const data = await res.json();
         setRecommendation(data.recommendation_text || "");
