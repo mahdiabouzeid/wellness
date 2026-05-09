@@ -47,6 +47,9 @@ const Sidebar = () => {
         boxShadow: "18px 0 40px rgba(15, 61, 57, 0.16)",
         position: { md: "sticky" },
         top: 0,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
       }}
     >
       <Box
@@ -69,7 +72,7 @@ const Sidebar = () => {
         </Typography>
       </Box>
 
-      <List sx={{ display: "grid", gap: 0.75 }}>
+      <List sx={{ display: "grid", gap: 0.75, flex: 1, overflowY: "auto", pr: 0.5 }}>
         {menuItems.map((item) => {
           const active = location.pathname === item.path;
 
@@ -108,7 +111,12 @@ const Sidebar = () => {
         variant="outlined"
         fullWidth
         onClick={logout}
-        sx={{ mt: 2, color: "#fff", borderColor: "rgba(255,255,255,0.5)" }}
+        sx={{
+          mt: 2,
+          flexShrink: 0,
+          color: "#fff",
+          borderColor: "rgba(255,255,255,0.5)",
+        }}
       >
         Logout
       </Button>
