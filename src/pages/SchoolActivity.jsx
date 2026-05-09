@@ -13,8 +13,7 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { useLocation, useNavigate } from "react-router-dom";
-
-const API_BASE_URL = "https://wellness.alwaysdata.net";
+import { API_BASE_URL, authFetch, openProtectedFile } from "../auth/authService";
 
 function getCurrentMonthValue() {
   const today = new Date();
@@ -47,7 +46,7 @@ export default function SchoolActivity() {
       setLoading(true);
 
       try {
-        const response = await fetch(
+        const response = await authFetch(
           `${API_BASE_URL}/get_school_activities.php?school_id=${schoolId}&month=${selectedMonth}`
         );
 
@@ -182,12 +181,11 @@ export default function SchoolActivity() {
 
               {activity.file_url && (
                 <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
-                  <a
-                    href={`${API_BASE_URL}/${activity.file_url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(event) => event.stopPropagation()}
-                  >
+                  <a href={activity.file_url} onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openProtectedFile(activity.file_url).catch((error) => console.error(error));
+                  }}>
                     View attached file
                   </a>
                 </Typography>
@@ -196,12 +194,11 @@ export default function SchoolActivity() {
               {activity.evidence_url && (
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   <strong>Evidence:</strong>{" "}
-                  <a
-                    href={`${API_BASE_URL}/${activity.evidence_url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(event) => event.stopPropagation()}
-                  >
+                  <a href={activity.evidence_url} onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openProtectedFile(activity.evidence_url).catch((error) => console.error(error));
+                  }}>
                     View evidence
                   </a>
                 </Typography>

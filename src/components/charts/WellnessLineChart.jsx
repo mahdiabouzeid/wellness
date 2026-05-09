@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Box, Typography, CircularProgress, Button } from "@mui/material";
+import { API_BASE_URL, authFetch } from "../../auth/authService";
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
@@ -50,7 +51,7 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
   const [loading, setLoading] = useState(true);
   const [currentWindowEnd, setCurrentWindowEnd] = useState(new Date());
 
-  const fetchData = async (startDate, endDate) => {
+  const fetchData = useCallback(async (startDate, endDate) => {
     try {
       setLoading(true);
 
@@ -63,7 +64,7 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
 
       const responses = await Promise.all(
         months.map((month) =>
-          fetch(`https://wellness.alwaysdata.net/get_wellness_percentage.php?school_id=${schoolId}&month=${month}`)
+          authFetch(`${API_BASE_URL}/get_wellness_percentage.php?school_id=${schoolId}&month=${month}`)
             .then((res) => res.json())
             .then((res) => ({ month, data: res }))
         )
@@ -120,7 +121,7 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [schoolId, onDataReady]);
 
   useEffect(() => {
     if (!schoolId) return;
@@ -131,7 +132,7 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
 
     setCurrentWindowEnd(end);
     fetchData(start, end);
-  }, [schoolId]);
+  }, [schoolId, fetchData]);
 
   const handlePrev = () => {
     const newEnd = new Date(currentWindowEnd);

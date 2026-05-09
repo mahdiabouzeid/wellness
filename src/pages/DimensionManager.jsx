@@ -10,6 +10,7 @@ import {
   Chip,
 } from "@mui/material";
 import { HexColorPicker } from "react-colorful";
+import { API_BASE_URL, authFetch } from "../auth/authService";
 
 export default function DimensionsManager() {
   const [dimensions, setDimensions] = useState([]);
@@ -19,7 +20,7 @@ export default function DimensionsManager() {
 
   // Fetch all dimensions
   useEffect(() => {
-    fetch("https://wellness.alwaysdata.net/get_dimensions.php")
+    authFetch(`${API_BASE_URL}/get_dimensions.php`)
       .then((res) => res.json())
       .then((data) => {
         setDimensions(data);
@@ -41,8 +42,8 @@ export default function DimensionsManager() {
 
     setUpdating(id);
     try {
-      const res = await fetch(
-        "/update_dimension_color.php",
+      const res = await authFetch(
+        `${API_BASE_URL}/update_dimension_color.php`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -17,7 +17,8 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
-import axios from "axios";
+import axios from "../api/axios";
+import { openProtectedFile } from "../auth/authService";
 
 export default function AdminDisplayActivities() {
   const [schools, setSchools] = useState([]);
@@ -35,7 +36,7 @@ export default function AdminDisplayActivities() {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const res = await axios.get("https://wellness.alwaysdata.net/get_schools.php");
+        const res = await axios.get("/get_schools.php");
         setSchools(res.data);
       } catch (err) {
         console.error("Error fetching schools:", err);
@@ -49,7 +50,7 @@ export default function AdminDisplayActivities() {
     if (!selectedSchool || !selectedMonth) return;
     setLoading(true);
     try {
-      const res = await axios.get("https://wellness.alwaysdata.net/display-activities.php", {
+      const res = await axios.get("/display-activities.php", {
         params: { school_id: selectedSchool, month: selectedMonth },
       });
       if (res.data.success) {
@@ -72,7 +73,7 @@ export default function AdminDisplayActivities() {
       formData.append("confirmed", currentStatus ? 0 : 1);
 
       const res = await axios.post(
-        "https://wellness.alwaysdata.net/confirm_activity.php",
+        "/confirm_activity.php",
         formData
       );
 
@@ -212,11 +213,12 @@ export default function AdminDisplayActivities() {
 
               {a.activity.file_url && (
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  <a
-                    href={`https://wellness.alwaysdata.net/uploads/${a.activity.file_url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  <a href={a.activity.file_url} onClick={(event) => {
+                    event.preventDefault();
+                    openProtectedFile(a.activity.file_url).catch((error) => {
+                      setSnackbar({ open: true, message: error.message, severity: "error" });
+                    });
+                  }}>
                     View Attached File
                   </a>
                 </Typography>
@@ -224,11 +226,12 @@ export default function AdminDisplayActivities() {
 
               {a.evidence_url && (
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  <a
-                    href={`https://wellness.alwaysdata.net/${a.evidence_url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  <a href={a.evidence_url} onClick={(event) => {
+                    event.preventDefault();
+                    openProtectedFile(a.evidence_url).catch((error) => {
+                      setSnackbar({ open: true, message: error.message, severity: "error" });
+                    });
+                  }}>
                     View Evidence
                   </a>
                 </Typography>

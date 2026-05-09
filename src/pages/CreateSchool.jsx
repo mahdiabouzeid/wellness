@@ -7,6 +7,7 @@ import {
   Button,
   Alert,
 } from "@mui/material";
+import { API_BASE_URL, authFetch } from "../auth/authService";
 
 const CreateSchool = () => {
   const [form, setForm] = useState({
@@ -27,7 +28,7 @@ const CreateSchool = () => {
     setResult(null);
 
     try {
-      const res = await fetch("https://wellness.alwaysdata.net/create_school.php", {
+      const res = await authFetch(`${API_BASE_URL}/create_school.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

@@ -8,6 +8,7 @@ import {
   Legend,
 } from "recharts";
 import { Box, Typography, CircularProgress } from "@mui/material";
+import { API_BASE_URL, authFetch } from "../../auth/authService";
 
 const WellnessCircularChart = ({ schoolId, month }) => {
   const [data, setData] = useState([]);
@@ -21,10 +22,10 @@ const WellnessCircularChart = ({ schoolId, month }) => {
         setLoading(true);
 
         const formattedMonth = month.slice(0, 7);
-        const url = `https://wellness.alwaysdata.net/get_wellness_percentage.php?school_id=${schoolId}&month=${formattedMonth}`;
+        const url = `${API_BASE_URL}/get_wellness_percentage.php?school_id=${schoolId}&month=${formattedMonth}`;
         console.log("Fetching:", url);
 
-        const response = await fetch(url);
+        const response = await authFetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }

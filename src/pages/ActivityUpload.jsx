@@ -11,6 +11,7 @@ import {
   LinearProgress,
   Grid,
 } from "@mui/material";
+import { API_BASE_URL, authFetch, getAccessToken } from "../auth/authService";
 
 export default function ActivityUpload() {
   const [formData, setFormData] = useState({
@@ -32,12 +33,12 @@ export default function ActivityUpload() {
 
   // ✅ Fetch dropdown data
   useEffect(() => {
-    fetch("https://wellness.alwaysdata.net/get_dimensions.php")
+    authFetch(`${API_BASE_URL}/get_dimensions.php`)
       .then((res) => res.json())
       .then(setDimensions)
       .catch(console.error);
 
-    fetch("https://wellness.alwaysdata.net/get_schools.php")
+    authFetch(`${API_BASE_URL}/get_schools.php`)
       .then((res) => res.json())
       .then(setSchools)
       .catch(console.error);
@@ -76,10 +77,10 @@ export default function ActivityUpload() {
         data.append(key, value);
       }
     });
-    data.append("created_by", 1);
-
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/upload_activity.php", true);
+    xhr.open("POST", `${API_BASE_URL}/upload_activity.php`, true);
+    const token = getAccessToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {

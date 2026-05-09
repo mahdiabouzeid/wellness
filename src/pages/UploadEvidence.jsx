@@ -13,6 +13,7 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { useNavigate, useLocation } from "react-router-dom";
+import { API_BASE_URL, authFetch } from "../auth/authService";
 
 export default function UploadEvidence() {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ export default function UploadEvidence() {
 
     try {
       setLoading(true);
-      const response = await fetch("https://wellness.alwaysdata.net/upload-school-activity.php", {
+      const response = await authFetch(`${API_BASE_URL}/upload-school-activity.php`, {
         method: "POST",
         body: formData,
       });

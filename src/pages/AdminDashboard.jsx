@@ -24,6 +24,7 @@ import WellnessBarChart from "../components/charts/WellnessBarChart";
 import WellnessCircularChart from "../components/charts/WellnessCircularChart";
 import RecommendationCard from "../components/ui/RecommendationCard";
 import Notification from "../components/ui/notifications";
+import { API_BASE_URL, authFetch } from "../auth/authService";
 
 const AdminDashboard = () => {
   const [stats] = useState({
@@ -47,7 +48,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const res = await fetch("https://wellness.alwaysdata.net/get_schools.php");
+        const res = await authFetch(`${API_BASE_URL}/get_schools.php`);
         const data = await res.json();
         setSchools(data);
         if (data.length > 0) {
@@ -66,7 +67,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const res = await fetch("https://wellness.alwaysdata.net/get_notifications.php");
+        const res = await authFetch(`${API_BASE_URL}/get_notifications.php`);
         const data = await res.json();
 
         const fresh = data.filter(
@@ -78,7 +79,7 @@ const AdminDashboard = () => {
           setActiveNotification(newest);
           fresh.forEach((item) => seenNotificationIds.current.add(item.id));
 
-          fetch("https://wellness.alwaysdata.net/mark_notification_read.php", {
+          authFetch(`${API_BASE_URL}/mark_notification_read.php`, {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: `id=${newest.id}`,
@@ -99,8 +100,8 @@ const AdminDashboard = () => {
 
     const fetchRecommendation = async () => {
       try {
-        const res = await fetch(
-          `https://wellness.alwaysdata.net/get_recommendation.php?school_id=${selectedSchool}&month=${month}`
+        const res = await authFetch(
+          `${API_BASE_URL}/get_recommendation.php?school_id=${selectedSchool}&month=${month}`
         );
         const data = await res.json();
         setRecommendation(data.recommendation_text || "");
@@ -118,7 +119,7 @@ const AdminDashboard = () => {
     setSaving(true);
 
     try {
-      await fetch("https://wellness.alwaysdata.net/save_recommendation.php", {
+      await authFetch(`${API_BASE_URL}/save_recommendation.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",

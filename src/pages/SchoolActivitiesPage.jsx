@@ -9,6 +9,7 @@ import {
   Button,
   CircularProgress,
 } from "@mui/material";
+import { API_BASE_URL, authFetch, openProtectedFile } from "../auth/authService";
 
 export default function SchoolActivitiesPage() {
   const [schools, setSchools] = useState([]);
@@ -17,7 +18,7 @@ export default function SchoolActivitiesPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("https://wellness.alwaysdata.net/get_schools.php")
+    authFetch(`${API_BASE_URL}/get_schools.php`)
       .then((res) => res.json())
       .then((data) => setSchools(data))
       .catch((err) => console.error("Error fetching schools:", err));
@@ -27,7 +28,7 @@ export default function SchoolActivitiesPage() {
     if (!selectedSchool) return;
     setLoading(true);
 
-    fetch(`/get_school_activities.php?school_id=${selectedSchool}`)
+    authFetch(`${API_BASE_URL}/get_school_activities.php?school_id=${selectedSchool}`)
       .then((res) => res.json())
       .then((data) => setActivities(data))
       .catch((err) => console.error("Error fetching activities:", err))
@@ -35,12 +36,13 @@ export default function SchoolActivitiesPage() {
   };
 
   const confirmActivity = (id) => {
-    fetch("https://wellness.alwaysdata.net/confirm_activity.php", {
+    const formData = new FormData();
+    formData.append("school_activity_id", id);
+    formData.append("confirmed", 1);
+
+    authFetch(`${API_BASE_URL}/confirm_activity.php`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ id }),
+      body: formData,
     })
       .then((res) => res.json())
       .then(() => fetchActivities())
@@ -81,7 +83,7 @@ export default function SchoolActivitiesPage() {
 
       <Box mt={3}>
         {activities.map((act) => (
-          <Card key={act.id} sx={{ mb: 2 }}>
+          <Card key={act.school_activity_id} sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="h6">{act.title}</Typography>
               <Typography variant="body2" color="text.secondary">
@@ -101,11 +103,10 @@ export default function SchoolActivitiesPage() {
 
               {act.evidence_url && (
                 <Typography>
-                  <a
-                    href={act.evidence_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  <a href={act.evidence_url} onClick={(event) => {
+                    event.preventDefault();
+                    openProtectedFile(act.evidence_url).catch((error) => console.error(error));
+                  }}>
                     View Evidence
                   </a>
                 </Typography>
@@ -116,7 +117,7 @@ export default function SchoolActivitiesPage() {
                   variant="outlined"
                   color="success"
                   sx={{ mt: 1 }}
-                  onClick={() => confirmActivity(act.id)}
+                  onClick={() => confirmActivity(act.school_activity_id)}
                 >
                   Confirm Completion
                 </Button>

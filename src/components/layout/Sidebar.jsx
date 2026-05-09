@@ -6,6 +6,7 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  Button,
 } from "@mui/material";
 import {
   Home,
@@ -16,6 +17,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
 
 const menuItems = [
   { text: "Home", icon: <Home size={18} />, path: "/admin-dashboard" },
@@ -28,6 +30,7 @@ const menuItems = [
 
 const Sidebar = () => {
   const location = useLocation();
+  const { logout } = useAuth();
 
   return (
     <Box
@@ -101,6 +104,14 @@ const Sidebar = () => {
           );
         })}
       </List>
+      <Button
+        variant="outlined"
+        fullWidth
+        onClick={logout}
+        sx={{ mt: 2, color: "#fff", borderColor: "rgba(255,255,255,0.5)" }}
+      >
+        Logout
+      </Button>
     </Box>
   );
 };

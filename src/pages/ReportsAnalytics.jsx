@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { API_BASE_URL, authFetch } from "../auth/authService";
 
 const Reports = () => {
   const [schools, setSchools] = useState([]);
@@ -25,7 +26,7 @@ const Reports = () => {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const res = await fetch("https://wellness.alwaysdata.net/get_schools.php");
+        const res = await authFetch(`${API_BASE_URL}/get_schools.php`);
         const data = await res.json();
         setSchools(data);
         if (data.length > 0) {

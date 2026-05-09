@@ -31,8 +31,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE_URL = "https://wellness.alwaysdata.net";
+import { API_BASE_URL, authFetch } from "../auth/authService";
 
 const DIMENSIONS = [
   { key: "emotional", label: "Emotional", color: "#F97316" },
@@ -151,7 +150,7 @@ export default function SchoolDashboard() {
         }
 
         const wellnessPromises = months.map(({ monthStr }) =>
-          fetch(
+          authFetch(
             `${API_BASE_URL}/get_wellness_percentage.php?school_id=${schoolId}&month=${monthStr}`
           ).then((res) => res.json())
         );
@@ -179,7 +178,7 @@ export default function SchoolDashboard() {
 
         setMonthStats(transformedData);
 
-        const activitiesRes = await fetch(
+        const activitiesRes = await authFetch(
           `${API_BASE_URL}/get_school_activities.php?school_id=${schoolId}&month=${selectedMonth}`
         );
         const activitiesData = await activitiesRes.json();

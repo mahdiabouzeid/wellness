@@ -9,11 +9,13 @@ import {
   Chip,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 import "./login.css";
 import leftImage from "../assets/loginImage.png";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,22 +27,10 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("https://wellness.alwaysdata.net/login.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
+      const data = await login(email, password);
       setLoading(false);
 
       if (data.success) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        if (data.user.school_id) {
-          localStorage.setItem("school_id", data.user.school_id);
-        }
-
         if (data.user.role === "admin") {
           navigate("/admin-dashboard");
         } else if (data.user.role === "school_leader") {
@@ -53,7 +43,7 @@ const LoginPage = () => {
       }
     } catch (err) {
       setLoading(false);
-      setError("Error connecting to the server");
+      setError(err.message || "Error connecting to the server");
       console.error(err);
     }
   };
