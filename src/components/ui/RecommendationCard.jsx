@@ -3,12 +3,19 @@ import { Paper, Typography, TextField, Box, Button, Chip } from "@mui/material";
 
 const RecommendationCard = ({
   selectedSchool,
+  selectedSchoolName,
   month,
   recommendation,
+  recommendationContext,
   setRecommendation,
   handleSaveRecommendation,
   saving,
+  loading,
 }) => {
+  const hasSelection = Boolean(selectedSchool && month);
+  const activeContext =
+    recommendationContext?.schoolId === selectedSchool && recommendationContext?.month === month;
+
   return (
     <Paper className="surface-card" sx={{ p: { xs: 2, md: 3 }, width: "100%" }}>
       <Box
@@ -28,28 +35,31 @@ const RecommendationCard = ({
           <Typography variant="h5">Monthly recommendation</Typography>
         </Box>
         <Chip
-          label={selectedSchool && month ? "Ready to save" : "Awaiting filters"}
-          color={selectedSchool && month ? "success" : "default"}
-          variant={selectedSchool && month ? "filled" : "outlined"}
+          label={hasSelection ? `${selectedSchoolName} - ${month}` : "Awaiting filters"}
+          color={hasSelection ? "success" : "default"}
+          variant={hasSelection ? "filled" : "outlined"}
         />
       </Box>
 
-      {selectedSchool && month ? (
+      {hasSelection ? (
         <>
           <TextField
             multiline
             rows={6}
             fullWidth
-            placeholder="Write a focused recommendation for this school and month..."
-            value={recommendation}
+            placeholder={
+              loading ? "Loading recommendation..." : "Write a focused recommendation for this school and month..."
+            }
+            value={activeContext ? recommendation : ""}
             onChange={(e) => setRecommendation(e.target.value)}
+            disabled={loading}
           />
 
           <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
             <Button
               variant="contained"
               onClick={handleSaveRecommendation}
-              disabled={saving}
+              disabled={saving || loading}
             >
               {saving ? "Saving..." : "Save Recommendation"}
             </Button>

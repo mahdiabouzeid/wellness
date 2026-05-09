@@ -16,6 +16,7 @@ import {
   CircularProgress,
   Chip,
   Button,
+  Alert,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import Sidebar from "../components/layout/Sidebar";
@@ -27,12 +28,14 @@ import Notification from "../components/ui/notifications";
 import { API_BASE_URL, authFetch } from "../auth/authService";
 
 const AdminDashboard = () => {
-  const [stats] = useState({
-    totalSchools: 12,
-    totalActivities: 85,
-    avgCompletion: 78,
-    pendingReports: 3,
+  const [stats, setStats] = useState({
+    totalSchools: 0,
+    totalActivities: 0,
+    avgCompletion: 0,
+    pendingReports: 0,
   });
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState("");
   const [schools, setSchools] = useState([]);
   const [selectedSchool, setSelectedSchool] = useState("");
   const [draftSchool, setDraftSchool] = useState("");
@@ -41,11 +44,49 @@ const AdminDashboard = () => {
   const [loadingSchools, setLoadingSchools] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeNotification, setActiveNotification] = useState(null);
-  const [recommendation, setRecommendation] = useState("");
+  const [recommendationsByKey, setRecommendationsByKey] = useState({});
+  const [recommendationContext, setRecommendationContext] = useState({
+    schoolId: "",
+    month: "",
+  });
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
   const [saving, setSaving] = useState(false);
   const seenNotificationIds = useRef(new Set());
+  const recommendationRequestId = useRef(0);
 
   const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
+  const recommendationKey = (schoolId, selectedMonth) => `${schoolId || ""}-${selectedMonth || ""}`;
+  const activeRecommendationKey = recommendationKey(selectedSchool, month);
+  const recommendation = recommendationsByKey[activeRecommendationKey] || "";
+  const setActiveRecommendation = (value) => {
+    setRecommendationsByKey((prev) => ({
+      ...prev,
+      [activeRecommendationKey]: value,
+    }));
+  };
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await authFetch(`${API_BASE_URL}/get_admin_dashboard_stats.php`);
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || "Failed to load dashboard stats.");
+        }
+
+        setStats(data.data);
+        setStatsError("");
+      } catch (err) {
+        console.error("Error fetching dashboard stats:", err);
+        setStatsError("Dashboard stats could not be loaded.");
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   useEffect(() => {
     const fetchSchools = async () => {
@@ -97,23 +138,58 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (!selectedSchool || !month) return;
+  const loadRecommendation = async (schoolId, selectedMonth) => {
+    const requestId = recommendationRequestId.current + 1;
+    recommendationRequestId.current = requestId;
 
-    const fetchRecommendation = async () => {
-      try {
-        const res = await authFetch(
-          `${API_BASE_URL}/get_recommendation.php?school_id=${selectedSchool}&month=${month}`
-        );
-        const data = await res.json();
-        setRecommendation(data.recommendation_text || "");
-      } catch (err) {
-        console.error("Error fetching recommendation:", err);
+    setRecommendationContext({ schoolId, month: selectedMonth });
+    const key = recommendationKey(schoolId, selectedMonth);
+
+    if (!schoolId || !selectedMonth) {
+      setLoadingRecommendation(false);
+      return;
+    }
+
+    setLoadingRecommendation(true);
+    try {
+      const params = new URLSearchParams({
+        school_id: schoolId,
+        month: selectedMonth,
+      });
+      const res = await authFetch(`${API_BASE_URL}/get_recommendation.php?${params.toString()}`);
+      const data = await res.json();
+
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || "Failed to load recommendation.");
       }
-    };
 
-    fetchRecommendation();
-  }, [selectedSchool, month]);
+      if (
+        data.school_id &&
+        (String(data.school_id) !== String(schoolId) || String(data.month) !== String(selectedMonth))
+      ) {
+        throw new Error("Recommendation response did not match the selected school and month.");
+      }
+
+      if (recommendationRequestId.current === requestId) {
+        setRecommendationsByKey((prev) => ({
+          ...prev,
+          [key]: data.recommendation_text || "",
+        }));
+      }
+    } catch (err) {
+      if (recommendationRequestId.current === requestId) {
+        console.error("Error fetching recommendation:", err);
+        setRecommendationsByKey((prev) => ({
+          ...prev,
+          [key]: "",
+        }));
+      }
+    } finally {
+      if (recommendationRequestId.current === requestId) {
+        setLoadingRecommendation(false);
+      }
+    }
+  };
 
   const handleSaveRecommendation = async () => {
     if (!selectedSchool || !month) return;
@@ -121,15 +197,28 @@ const AdminDashboard = () => {
     setSaving(true);
 
     try {
-      await authFetch(`${API_BASE_URL}/save_recommendation.php`, {
+      const body = new URLSearchParams({
+        school_id: selectedSchool,
+        month,
+        recommendation_text: recommendation,
+      });
+
+      const res = await authFetch(`${API_BASE_URL}/save_recommendation.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: `school_id=${selectedSchool}&month=${month}&recommendation_text=${encodeURIComponent(
-          recommendation
-        )}`,
+        body,
       });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to save recommendation.");
+      }
+      setRecommendationsByKey((prev) => ({
+        ...prev,
+        [activeRecommendationKey]: recommendation,
+      }));
       alert("Recommendation saved successfully");
     } catch (err) {
       console.error(err);
@@ -145,7 +234,7 @@ const AdminDashboard = () => {
     if (!draftSchool || !draftMonth) return;
     setSelectedSchool(draftSchool);
     setMonth(draftMonth);
-    setRecommendation("");
+    loadRecommendation(draftSchool, draftMonth);
   };
 
   return (
@@ -333,10 +422,12 @@ const AdminDashboard = () => {
                 fullWidth
                 sx={{ minHeight: 56 }}
                 onClick={() => {
+                  recommendationRequestId.current += 1;
                   setDraftMonth("");
                   setMonth("");
                   setSelectedSchool("");
-                  setRecommendation("");
+                  setRecommendationContext({ schoolId: "", month: "" });
+                  setLoadingRecommendation(false);
                 }}
               >
                 Reset
@@ -346,17 +437,38 @@ const AdminDashboard = () => {
         </Paper>
 
         <Grid container spacing={3}>
+          {statsError && (
+            <Grid item xs={12}>
+              <Alert severity="error">{statsError}</Alert>
+            </Grid>
+          )}
           <Grid item xs={12} sm={6} xl={3}>
-            <StatCard title="Schools Registered" value={stats.totalSchools} color="#0F766E" />
+            <StatCard
+              title="Schools Registered"
+              value={loadingStats ? "..." : stats.totalSchools}
+              color="#0F766E"
+            />
           </Grid>
           <Grid item xs={12} sm={6} xl={3}>
-            <StatCard title="Activities Uploaded" value={stats.totalActivities} color="#EA580C" />
+            <StatCard
+              title="Activities Uploaded"
+              value={loadingStats ? "..." : stats.totalActivities}
+              color="#EA580C"
+            />
           </Grid>
           <Grid item xs={12} sm={6} xl={3}>
-            <StatCard title="Avg Completion" value={`${stats.avgCompletion}%`} color="#0284C7" />
+            <StatCard
+              title="Avg Completion"
+              value={loadingStats ? "..." : `${stats.avgCompletion}%`}
+              color="#0284C7"
+            />
           </Grid>
           <Grid item xs={12} sm={6} xl={3}>
-            <StatCard title="Pending Reports" value={stats.pendingReports} color="#B45309" />
+            <StatCard
+              title="Pending Reports"
+              value={loadingStats ? "..." : stats.pendingReports}
+              color="#B45309"
+            />
           </Grid>
         </Grid>
 
@@ -421,12 +533,16 @@ const AdminDashboard = () => {
         )}
 
         <RecommendationCard
+          key={`${selectedSchool || "none"}-${month || "none"}`}
           selectedSchool={selectedSchool}
+          selectedSchoolName={selectedSchoolName}
           month={month}
           recommendation={recommendation}
-          setRecommendation={setRecommendation}
+          recommendationContext={recommendationContext}
+          setRecommendation={setActiveRecommendation}
           handleSaveRecommendation={handleSaveRecommendation}
-          saving={saving}
+          saving={saving || loadingRecommendation}
+          loading={loadingRecommendation}
         />
       </Box>
     </Box>
