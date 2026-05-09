@@ -118,6 +118,7 @@ export default function SchoolDashboard() {
   const [monthStats, setMonthStats] = useState([]);
   const [topActivities, setTopActivities] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthValue);
+  const [draftMonth, setDraftMonth] = useState(getCurrentMonthValue);
 
   const schoolId = localStorage.getItem("school_id");
 
@@ -283,15 +284,22 @@ export default function SchoolDashboard() {
             label="Reporting Month"
             type="month"
             size="small"
-            value={selectedMonth}
+            value={draftMonth}
             onChange={(event) => {
               if (event.target.value) {
-                setSelectedMonth(event.target.value);
+                setDraftMonth(event.target.value);
               }
             }}
             InputLabelProps={{ shrink: true }}
             sx={{ minWidth: 190, backgroundColor: "#fff" }}
           />
+          <Button
+            variant="contained"
+            onClick={() => setSelectedMonth(draftMonth)}
+            disabled={!draftMonth || draftMonth === selectedMonth || refreshing}
+          >
+            View Data
+          </Button>
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}

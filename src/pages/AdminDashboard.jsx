@@ -35,7 +35,9 @@ const AdminDashboard = () => {
   });
   const [schools, setSchools] = useState([]);
   const [selectedSchool, setSelectedSchool] = useState("");
+  const [draftSchool, setDraftSchool] = useState("");
   const [month, setMonth] = useState("");
+  const [draftMonth, setDraftMonth] = useState("");
   const [loadingSchools, setLoadingSchools] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeNotification, setActiveNotification] = useState(null);
@@ -52,7 +54,7 @@ const AdminDashboard = () => {
         const data = await res.json();
         setSchools(data);
         if (data.length > 0) {
-          setSelectedSchool(data[0].id);
+          setDraftSchool(data[0].id);
         }
       } catch (err) {
         console.error("Error fetching schools:", err);
@@ -138,6 +140,13 @@ const AdminDashboard = () => {
 
   const selectedSchoolName =
     schools.find((school) => String(school.id) === String(selectedSchool))?.name || "Selected school";
+
+  const handleApplyFilters = () => {
+    if (!draftSchool || !draftMonth) return;
+    setSelectedSchool(draftSchool);
+    setMonth(draftMonth);
+    setRecommendation("");
+  };
 
   return (
     <Box
@@ -242,7 +251,7 @@ const AdminDashboard = () => {
               }}
             >
               <Chip
-                label={selectedSchoolName}
+                label={selectedSchool && month ? selectedSchoolName : "Choose a school"}
                 sx={{ backgroundColor: "rgba(255,255,255,0.14)", color: "#fff" }}
               />
               <Chip
@@ -255,7 +264,7 @@ const AdminDashboard = () => {
 
         <Paper className="surface-card" sx={{ p: { xs: 2, md: 3 } }}>
           <Grid container spacing={2.5} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <Typography variant="h6" sx={{ mb: 0.75 }}>
                 Analytics Filters
               </Typography>
@@ -280,9 +289,9 @@ const AdminDashboard = () => {
                   </Box>
                 ) : (
                   <Select
-                    value={selectedSchool}
+                    value={draftSchool}
                     label="Select School"
-                    onChange={(e) => setSelectedSchool(e.target.value)}
+                    onChange={(e) => setDraftSchool(e.target.value)}
                   >
                     {schools.map((school) => (
                       <MenuItem key={school.id} value={school.id}>
@@ -294,25 +303,39 @@ const AdminDashboard = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2}>
               <TextField
                 label="Select Month"
                 type="month"
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
+                value={draftMonth}
+                onChange={(e) => setDraftMonth(e.target.value)}
                 fullWidth
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
 
-            <Grid item xs={12} md={1}>
+            <Grid item xs={12} sm={6} md={1}>
+              <Button
+                variant="contained"
+                fullWidth
+                sx={{ minHeight: 56 }}
+                onClick={handleApplyFilters}
+                disabled={!draftSchool || !draftMonth}
+              >
+                View
+              </Button>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={1}>
               <Button
                 variant="contained"
                 color="secondary"
                 fullWidth
                 sx={{ minHeight: 56 }}
                 onClick={() => {
+                  setDraftMonth("");
                   setMonth("");
+                  setSelectedSchool("");
                   setRecommendation("");
                 }}
               >
