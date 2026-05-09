@@ -186,7 +186,7 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
   const windowRange = `${monthStats[0]?.month} to ${monthStats[monthStats.length - 1]?.month}`;
 
   return (
-    <Box>
+    <Box sx={{ width: "100%", minWidth: 0 }}>
       <Box
         sx={{
           display: "flex",
@@ -214,8 +214,8 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
         </Box>
       </Box>
 
-      <Box sx={{ width: "100%", height: 380 }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <Box sx={{ width: "100%", minWidth: 0, minHeight: 380, height: 380 }}>
+        <ResponsiveContainer width="100%" height={380} debounce={50}>
           <LineChart data={monthStats} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
             <CartesianGrid stroke="rgba(16,42,39,0.08)" strokeDasharray="4 4" />
             <XAxis dataKey="month" tick={{ fill: "#55706C" }} axisLine={false} tickLine={false} />

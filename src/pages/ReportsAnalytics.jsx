@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import WellnessLineChart from "../components/charts/WellnessLineChart";
 import {
   Box,
@@ -45,6 +45,10 @@ const Reports = () => {
   useEffect(() => {
     setChartData([]);
   }, [selectedSchool]);
+
+  const handleChartDataReady = useCallback((data) => {
+    setChartData(Array.isArray(data) ? data : []);
+  }, []);
 
   const exportToExcel = () => {
     if (!chartData || chartData.length === 0) {
@@ -102,8 +106,8 @@ const Reports = () => {
       </Box>
 
       <Grid container spacing={3} sx={{ mt: 0.5 }}>
-        <Grid item xs={12}>
-          <Paper className="surface-card" sx={{ p: { xs: 2, md: 3 } }}>
+        <Grid item xs={12} sx={{ minWidth: 0 }}>
+          <Paper className="surface-card" sx={{ p: { xs: 2, md: 3 }, width: "100%", minWidth: 0, overflow: "hidden" }}>
             <Box
               sx={{
                 display: "flex",
@@ -161,7 +165,7 @@ const Reports = () => {
             {selectedSchool ? (
               <WellnessLineChart
                 schoolId={selectedSchool}
-                onDataReady={(data) => setChartData(Array.isArray(data) ? data : [])}
+                onDataReady={handleChartDataReady}
               />
             ) : (
               <Typography sx={{ mt: 3, color: "text.secondary" }}>
