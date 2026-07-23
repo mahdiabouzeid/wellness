@@ -11,6 +11,8 @@ const RecommendationCard = ({
   handleSaveRecommendation,
   saving,
   loading,
+  saveDisabled,
+  saveButtonColor,
 }) => {
   const hasSelection = Boolean(selectedSchool && month);
   const activeContext =
@@ -48,8 +50,11 @@ const RecommendationCard = ({
             rows={6}
             fullWidth
             placeholder={
-              loading ? "Loading recommendation..." : "Write a focused recommendation for this school and month..."
+              loading
+                ? "Loading recommendation..."
+                : "Enter your monthly recommendation based on wellness activities and tracking. Use wellness data to suggest improvements for this month"
             }
+            helperText="Enter your monthly recommendation based on wellness activities and tracking. Use wellness data to suggest improvements for this month"
             value={activeContext ? recommendation : ""}
             onChange={(e) => setRecommendation(e.target.value)}
             disabled={loading}
@@ -59,15 +64,31 @@ const RecommendationCard = ({
             <Button
               variant="contained"
               onClick={handleSaveRecommendation}
-              disabled={saving || loading}
+              disabled={saveDisabled || saving || loading}
+              sx={{
+                backgroundColor: saveButtonColor,
+                color: "#102A27",
+                "&:hover": {
+                  backgroundColor: saveButtonColor,
+                  filter: "brightness(0.96)",
+                },
+                "&:focus-visible": {
+                  outline: `3px solid ${saveButtonColor}`,
+                  outlineOffset: 3,
+                },
+                "&.Mui-disabled": {
+                  backgroundColor: "rgba(251, 113, 133, 0.36)",
+                  color: "rgba(16, 42, 39, 0.54)",
+                },
+              }}
             >
-              {saving ? "Saving..." : "Save Recommendation"}
+              {saving ? "Saving..." : "Ready to save"}
             </Button>
           </Box>
         </>
       ) : (
         <Typography color="text.secondary">
-          Select a school and a month first to draft a recommendation.
+          Enter your monthly recommendation based on wellness activities and tracking. Use wellness data to suggest improvements for this month
         </Typography>
       )}
     </Paper>
