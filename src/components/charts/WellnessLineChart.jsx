@@ -8,7 +8,8 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import { Box, Typography, CircularProgress, Button } from "@mui/material";
+import { Alert, Box, Typography, CircularProgress, Button } from "@mui/material";
+import QueryStatsOutlinedIcon from "@mui/icons-material/QueryStatsOutlined";
 import { API_BASE_URL, authFetch } from "../../auth/authService";
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -45,15 +46,48 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-const WellnessLineChart = ({ schoolId, onDataReady }) => {
+const getDefaultWindow = () => {
+  const end = new Date();
+  const start = new Date();
+  start.setMonth(start.getMonth() - 5);
+
+  return { start, end };
+};
+
+const EmptyReportState = () => (
+  <Box
+    sx={{
+      minHeight: 360,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      textAlign: "center",
+      px: 2,
+    }}
+  >
+    <Box sx={{ maxWidth: 560 }}>
+      <QueryStatsOutlinedIcon sx={{ fontSize: 46, color: "rgba(15, 118, 110, 0.48)", mb: 1.5 }} />
+      <Typography variant="h6" sx={{ mb: 0.75 }}>
+        No report data available.
+      </Typography>
+      <Typography color="text.secondary" sx={{ fontSize: "0.95rem" }}>
+        Please select another reporting period or ensure wellness activities have been uploaded.
+      </Typography>
+    </Box>
+  </Box>
+);
+
+const WellnessLineChart = ({ schoolId, onDataReady, onReset, resetVersion = 0 }) => {
   const [monthStats, setMonthStats] = useState([]);
   const [dimensions, setDimensions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [currentWindowEnd, setCurrentWindowEnd] = useState(new Date());
 
   const fetchData = useCallback(async (startDate, endDate) => {
     try {
       setLoading(true);
+      setError("");
 
       const months = [];
       const temp = new Date(startDate);
@@ -63,11 +97,18 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
       }
 
       const responses = await Promise.all(
-        months.map((month) =>
-          authFetch(`${API_BASE_URL}/get_wellness_percentage.php?school_id=${schoolId}&month=${month}`)
-            .then((res) => res.json())
-            .then((res) => ({ month, data: res }))
-        )
+        months.map(async (month) => {
+          const response = await authFetch(
+            `${API_BASE_URL}/get_wellness_percentage.php?school_id=${schoolId}&month=${month}`
+          );
+
+          if (!response.ok) {
+            throw new Error(`Report request failed with status ${response.status}.`);
+          }
+
+          const data = await response.json();
+          return { month, data };
+        })
       );
 
       const allDimensions = {};
@@ -98,12 +139,17 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
         return entry;
       });
 
+      const nextDimensions = Object.entries(allDimensions).map(([key, color]) => ({ key, color }));
+
       setMonthStats(formattedData);
-      setDimensions(
-        Object.entries(allDimensions).map(([key, color]) => ({ key, color }))
-      );
+      setDimensions(nextDimensions);
 
       if (onDataReady) {
+        if (!nextDimensions.length) {
+          onDataReady([]);
+          return;
+        }
+
         const exportSafeData = formattedData.map((row) => {
           const output = { Month: row.month };
           Object.keys(row).forEach((key) => {
@@ -118,6 +164,12 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
       }
     } catch (err) {
       console.error("Error loading chart data:", err);
+      setMonthStats([]);
+      setDimensions([]);
+      setError("Report data could not be loaded. Please try again.");
+      if (onDataReady) {
+        onDataReady([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -126,13 +178,11 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
   useEffect(() => {
     if (!schoolId) return;
 
-    const end = new Date();
-    const start = new Date();
-    start.setMonth(start.getMonth() - 5);
+    const { start, end } = getDefaultWindow();
 
     setCurrentWindowEnd(end);
     fetchData(start, end);
-  }, [schoolId, fetchData]);
+  }, [schoolId, resetVersion, fetchData]);
 
   const handlePrev = () => {
     const newEnd = new Date(currentWindowEnd);
@@ -165,6 +215,12 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
     fetchData(newStart, newEnd);
   };
 
+  const handleReset = () => {
+    const { end } = getDefaultWindow();
+    setCurrentWindowEnd(end);
+    onReset?.();
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" height={360}>
@@ -173,14 +229,12 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
     );
   }
 
+  if (error) {
+    return <Alert severity="error">{error}</Alert>;
+  }
+
   if (!monthStats.length) {
-    return (
-      <Box textAlign="center" py={4}>
-        <Typography variant="body2" color="text.secondary">
-          No data available for this school.
-        </Typography>
-      </Box>
-    );
+    return <EmptyReportState />;
   }
 
   const windowRange = `${monthStats[0]?.month} to ${monthStats[monthStats.length - 1]?.month}`;
@@ -204,16 +258,22 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
           <Typography variant="h6">{windowRange}</Typography>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 1 }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
           <Button variant="outlined" onClick={handlePrev}>
-            Prev 6 months
+            Previous Six Months
           </Button>
           <Button variant="outlined" onClick={handleNext}>
-            Next 6 months
+            Next Six Months
+          </Button>
+          <Button variant="contained" color="secondary" onClick={handleReset}>
+            Reset
           </Button>
         </Box>
       </Box>
 
+      {!dimensions.length ? (
+        <EmptyReportState />
+      ) : (
       <Box sx={{ width: "100%", minWidth: 0, minHeight: 380, height: 380 }}>
         <ResponsiveContainer width="100%" height={380} debounce={50}>
           <LineChart data={monthStats} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
@@ -243,6 +303,7 @@ const WellnessLineChart = ({ schoolId, onDataReady }) => {
           </LineChart>
         </ResponsiveContainer>
       </Box>
+      )}
     </Box>
   );
 };

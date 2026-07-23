@@ -20,8 +20,10 @@ import { API_BASE_URL, authFetch } from "../auth/authService";
 const Reports = () => {
   const [schools, setSchools] = useState([]);
   const [selectedSchool, setSelectedSchool] = useState("");
+  const [defaultSchool, setDefaultSchool] = useState("");
   const [loadingSchools, setLoadingSchools] = useState(true);
   const [chartData, setChartData] = useState([]);
+  const [resetVersion, setResetVersion] = useState(0);
 
   useEffect(() => {
     const fetchSchools = async () => {
@@ -30,7 +32,8 @@ const Reports = () => {
         const data = await res.json();
         setSchools(data);
         if (data.length > 0) {
-          setSelectedSchool(data[0].id);
+          setSelectedSchool(String(data[0].id));
+          setDefaultSchool(String(data[0].id));
         }
       } catch (err) {
         console.error("Error fetching schools:", err);
@@ -49,6 +52,12 @@ const Reports = () => {
   const handleChartDataReady = useCallback((data) => {
     setChartData(Array.isArray(data) ? data : []);
   }, []);
+
+  const handleResetReports = useCallback(() => {
+    setSelectedSchool(defaultSchool);
+    setChartData([]);
+    setResetVersion((current) => current + 1);
+  }, [defaultSchool]);
 
   const exportToExcel = () => {
     if (!chartData || chartData.length === 0) {
@@ -96,11 +105,18 @@ const Reports = () => {
             label="Analytics"
             sx={{ mb: 2, color: "#0F3D39", backgroundColor: "rgba(244,255,253,0.9)" }}
           />
-          <Typography variant="h3" sx={{ mb: 1 }}>
-            Reports built for clean review and export.
+          <Typography
+            variant="h3"
+            sx={{
+              mb: 1,
+              fontSize: { xs: "2rem", sm: "2.45rem", lg: "2.85rem" },
+              lineHeight: 1.12,
+            }}
+          >
+            Create, Review, and Export Reports
           </Typography>
           <Typography sx={{ color: "rgba(245,255,253,0.82)" }}>
-            Compare dimension progress across time and export the exact data shown on screen.
+            Analyze wellness dimension progress over time and easily export the displayed data.
           </Typography>
         </Box>
       </Box>
@@ -145,10 +161,10 @@ const Reports = () => {
                     <Select
                       value={selectedSchool}
                       label="Select School"
-                      onChange={(e) => setSelectedSchool(e.target.value)}
+                      onChange={(e) => setSelectedSchool(String(e.target.value))}
                     >
                       {schools.map((school) => (
-                        <MenuItem key={school.id} value={school.id}>
+                        <MenuItem key={school.id} value={String(school.id)}>
                           {school.name}
                         </MenuItem>
                       ))}
@@ -166,6 +182,8 @@ const Reports = () => {
               <WellnessLineChart
                 schoolId={selectedSchool}
                 onDataReady={handleChartDataReady}
+                onReset={handleResetReports}
+                resetVersion={resetVersion}
               />
             ) : (
               <Typography sx={{ mt: 3, color: "text.secondary" }}>
